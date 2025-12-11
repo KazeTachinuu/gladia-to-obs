@@ -3,13 +3,17 @@
  * Modern live transcription for OBS/VMix
  */
 
-import { PORT } from "./types";
+import { PORT, VERSION } from "./types";
 import { addClient, removeClient, broadcast, broadcastStyle } from "./sse";
 import { DASHBOARD } from "./dashboard";
 import { OVERLAY } from "./overlay";
+import { autoUpdate } from "./updater";
 
 // Check if already running and start server
 (async () => {
+  // Auto-update check (runs silently, updates if newer version available)
+  await autoUpdate();
+
   // Check if port is already in use
   try {
     const response = await fetch(`http://localhost:${PORT}/`, {
@@ -21,7 +25,7 @@ import { OVERLAY } from "./overlay";
       console.log(`
 \x1b[1m\x1b[36m╔══════════════════════════════════════════════════════════════════════════════╗\x1b[0m
 \x1b[1m\x1b[36m║\x1b[0m                                                                              \x1b[1m\x1b[36m║\x1b[0m
-\x1b[1m\x1b[36m║\x1b[0m   \x1b[1m\x1b[35mTRANSCRIPTION v3.0\x1b[0m                                                        \x1b[1m\x1b[36m║\x1b[0m
+\x1b[1m\x1b[36m║\x1b[0m   \x1b[1m\x1b[35mTRANSCRIPTION v${VERSION}\x1b[0m                                                        \x1b[1m\x1b[36m║\x1b[0m
 \x1b[1m\x1b[36m║\x1b[0m   \x1b[2mLive captions for OBS / VMix\x1b[0m                                              \x1b[1m\x1b[36m║\x1b[0m
 \x1b[1m\x1b[36m║\x1b[0m                                                                              \x1b[1m\x1b[36m║\x1b[0m
 \x1b[1m\x1b[36m╚══════════════════════════════════════════════════════════════════════════════╝\x1b[0m
@@ -45,7 +49,7 @@ import { OVERLAY } from "./overlay";
   console.log(`
 \x1b[1m\x1b[36m╔══════════════════════════════════════════════════════════════════════════════╗
 ║                                                                              ║
-║\x1b[0m   \x1b[1m\x1b[35mTRANSCRIPTION v3.0\x1b[0m                                                        \x1b[1m\x1b[36m║
+║\x1b[0m   \x1b[1m\x1b[35mTRANSCRIPTION v${VERSION}\x1b[0m                                                        \x1b[1m\x1b[36m║
 ║\x1b[0m   \x1b[2mLive captions for OBS / VMix\x1b[0m                                              \x1b[1m\x1b[36m║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝\x1b[0m

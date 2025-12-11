@@ -5,6 +5,9 @@
  */
 
 import { $ } from "bun";
+import pkg from "./package.json";
+
+const VERSION = pkg.version;
 
 const TARGETS = {
   "mac-arm64": "bun-darwin-arm64",
@@ -19,13 +22,16 @@ type Target = keyof typeof TARGETS;
 async function bundle(): Promise<string> {
   const outfile = ".build/index.js";
 
-  // Bundle all modules into single file
+  // Bundle all modules into single file with version injected
   const result = await Bun.build({
     entrypoints: ["src/index.ts"],
     outdir: ".build",
     target: "bun",
     minify: true,
     naming: "[name].[ext]",
+    define: {
+      "process.env.APP_VERSION": JSON.stringify(VERSION),
+    },
   });
 
   if (!result.success) {
