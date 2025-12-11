@@ -80,14 +80,17 @@ function Add-ToPath {
         Write-Step "Adding to PATH..."
         [Environment]::SetEnvironmentVariable(
             "Path",
-            "$currentPath;$Dir",
+            "$Dir;$currentPath",
             "User"
         )
-        $env:Path = "$env:Path;$Dir"
-        Write-Ok "PATH updated"
-        return $true
+        $env:Path = "$Dir;$env:Path"
+        Write-Ok "Added to PATH: $Dir"
+        Write-Host ""
+        Write-Host "[!] " -ForegroundColor Yellow -NoNewline
+        Write-Host "Restart your terminal for PATH changes to take effect."
+    } else {
+        Write-Ok "Already in PATH"
     }
-    return $false
 }
 
 # Main installation
@@ -124,7 +127,7 @@ function Install-Transcription {
 
     # Verify checksum
     Write-Step "Verifying integrity..."
-    Test-Checksum -FilePath $tempFile -Platform $platform
+    $null = Test-Checksum -FilePath $tempFile -Platform $platform
 
     # Move to install location
     Write-Step "Installing..."
@@ -135,7 +138,7 @@ function Install-Transcription {
     Write-Host "------------------------------------------------------------------------------" -ForegroundColor White
 
     # Add to PATH
-    $pathUpdated = Add-ToPath -Dir $InstallDir
+    Add-ToPath -Dir $InstallDir
 
     Write-Host ""
     Write-Host "[OK] Installation complete!" -ForegroundColor Green
@@ -152,13 +155,6 @@ function Install-Transcription {
     Write-Host ""
     Write-Host "   3. A web page will open automatically for configuration"
     Write-Host ""
-
-    if ($pathUpdated) {
-        Write-Host "[!] " -ForegroundColor Yellow -NoNewline
-        Write-Host "Restart your terminal for PATH changes to take effect."
-        Write-Host ""
-    }
-
     Write-Host "------------------------------------------------------------------------------" -ForegroundColor DarkGray
 }
 

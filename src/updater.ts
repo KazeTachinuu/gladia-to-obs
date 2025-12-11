@@ -87,19 +87,18 @@ export async function downloadAndReplace(url: string, version: string): Promise<
     const data = await response.arrayBuffer();
     await Bun.write(tempPath, data);
 
-    // Make executable (Unix)
-    if (process.platform !== "win32") {
+    if (process.platform === "win32") {
+      // Windows: use PowerShell for file operations
+      await $`powershell -NoProfile -Command "Move-Item -Force '${execPath}' '${backupPath}'"`.quiet();
+      await $`powershell -NoProfile -Command "Move-Item -Force '${tempPath}' '${execPath}'"`.quiet();
+      await $`powershell -NoProfile -Command "Remove-Item -Force '${backupPath}' -ErrorAction SilentlyContinue"`.quiet();
+    } else {
+      // Unix: chmod and mv
       await $`chmod +x ${tempPath}`.quiet();
+      await $`mv ${execPath} ${backupPath}`.quiet();
+      await $`mv ${tempPath} ${execPath}`.quiet();
+      await $`rm -f ${backupPath}`.quiet();
     }
-
-    // Backup current binary
-    await $`mv ${execPath} ${backupPath}`.quiet();
-
-    // Replace with new binary
-    await $`mv ${tempPath} ${execPath}`.quiet();
-
-    // Remove backup on success
-    await $`rm -f ${backupPath}`.quiet();
 
     console.log(`\x1b[32m[UPDATE]\x1b[0m Updated to ${version}! Restarting...`);
 
@@ -107,8 +106,12 @@ export async function downloadAndReplace(url: string, version: string): Promise<
   } catch (error) {
     // Rollback on failure
     try {
-      await $`rm -f ${tempPath}`.quiet();
-      await $`mv ${backupPath} ${execPath}`.quiet();
+      if (process.platform === "win32") {
+        await $`powershell -NoProfile -Command "Remove-Item -Force '${tempPath}' -ErrorAction SilentlyContinue; if (Test-Path '${backupPath}') { Move-Item -Force '${backupPath}' '${execPath}' }"`.quiet();
+      } else {
+        await $`rm -f ${tempPath}`.quiet();
+        await $`mv ${backupPath} ${execPath}`.quiet();
+      }
     } catch {}
 
     console.error(`\x1b[31m[UPDATE]\x1b[0m Update failed:`, error);

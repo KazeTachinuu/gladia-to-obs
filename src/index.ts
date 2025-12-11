@@ -26,8 +26,17 @@ process.on("unhandledRejection", (err) => {
 (async () => {
   try {
     // Setup: ensure in PATH, check for updates
-    await ensureInPath();
-    await autoUpdate();
+    try {
+      await ensureInPath();
+    } catch (e) {
+      // Don't fail on PATH setup errors
+    }
+
+    try {
+      await autoUpdate();
+    } catch (e) {
+      // Don't fail on update errors
+    }
 
   // Check if port is already in use
   try {
@@ -139,11 +148,15 @@ Press \x1b[31mCTRL+C\x1b[0m to stop.
   });
 
   // Open browser
-  if (process.platform === "win32") {
-    Bun.spawn(["cmd", "/c", "start", `http://localhost:${PORT}`]);
-  } else {
-    const cmd = process.platform === "darwin" ? "open" : "xdg-open";
-    Bun.spawn([cmd, `http://localhost:${PORT}`]);
+  try {
+    if (process.platform === "win32") {
+      Bun.spawn(["cmd", "/c", "start", `http://localhost:${PORT}`]);
+    } else {
+      const cmd = process.platform === "darwin" ? "open" : "xdg-open";
+      Bun.spawn([cmd, `http://localhost:${PORT}`]);
+    }
+  } catch {
+    // Browser open is non-critical
   }
   } catch (err) {
     console.error("\x1b[31m[FATAL]\x1b[0m Startup error:", err);
