@@ -113,9 +113,8 @@ function Install-Transcription {
         # Use TLS 1.2
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-        $ProgressPreference = 'SilentlyContinue'
+        # Download with progress bar visible
         Invoke-WebRequest -Uri $downloadUrl -OutFile $tempFile -UseBasicParsing
-        $ProgressPreference = 'Continue'
     }
     catch {
         Write-Fail "Download failed. Please check your internet connection."

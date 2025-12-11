@@ -77,14 +77,14 @@ check_downloader() {
     fi
 }
 
-# Download function
+# Download function (with progress bar)
 download() {
     local url="$1" output="$2" downloader="$3"
 
     if [ "$downloader" = "curl" ]; then
-        curl -fsSL -o "$output" "$url"
+        curl -fL --progress-bar -o "$output" "$url"
     else
-        wget -q -O "$output" "$url"
+        wget --show-progress -O "$output" "$url"
     fi
 }
 
