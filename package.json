@@ -1,0 +1,19 @@
+{
+  "name": "transcription",
+  "version": "3.0.0",
+  "description": "Live transcription overlay for OBS/VMix with Gladia API",
+  "scripts": {
+    "dev": "bun run server.ts",
+    "build": "bun build --compile --minify --bytecode server.ts --outfile dist/transcription",
+    "build:win": "bun build --compile --minify --bytecode --target=bun-windows-x64 server.ts --outfile dist/transcription-win-x64.exe",
+    "build:linux": "bun build --compile --minify --bytecode --target=bun-linux-x64 server.ts --outfile dist/transcription-linux-x64",
+    "build:linux-arm": "bun build --compile --minify --bytecode --target=bun-linux-arm64 server.ts --outfile dist/transcription-linux-arm64",
+    "build:mac": "bun build --compile --minify --bytecode --target=bun-darwin-x64 server.ts --outfile dist/transcription-mac-x64",
+    "build:mac-arm": "bun build --compile --minify --bytecode --target=bun-darwin-arm64 server.ts --outfile dist/transcription-mac-arm64",
+    "build:all": "bun run build:win && bun run build:linux && bun run build:linux-arm && bun run build:mac && bun run build:mac-arm && bun run build:mac-universal && bun run checksums",
+    "build:mac-universal": "bun run build:mac && bun run build:mac-arm && lipo -create dist/transcription-mac-x64 dist/transcription-mac-arm64 -output dist/transcription-mac-universal",
+    "checksums": "cd dist && shasum -a 256 transcription-* > checksums.txt && cat checksums.txt"
+  },
+  "author": "Hugo",
+  "license": "MIT"
+}
