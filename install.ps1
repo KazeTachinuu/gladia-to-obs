@@ -46,8 +46,8 @@ function Test-Checksum {
         $checksumsUrl = Get-ChecksumsUrl
         $checksums = (Invoke-WebRequest -Uri $checksumsUrl -UseBasicParsing).Content
 
-        # Find the checksum for our platform
-        $pattern = "([a-f0-9]{64})\s+transcription-$Platform"
+        # Find the checksum for our platform (includes .exe extension)
+        $pattern = "([a-f0-9]{64})\s+transcription-$Platform\.exe"
         if ($checksums -match $pattern) {
             $expected = $Matches[1]
 
