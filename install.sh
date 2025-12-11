@@ -20,12 +20,12 @@ NC='\033[0m'
 # Clear screen and show header
 clear
 echo ""
-echo -e "${BOLD}${CYAN}+------------------------------------------------------------------------------+${NC}"
-echo -e "${BOLD}${CYAN}|${NC}                                                                              ${BOLD}${CYAN}|${NC}"
-echo -e "${BOLD}${CYAN}|${NC}   ${BOLD}TRANSCRIPTION - Installer${NC}                                                 ${BOLD}${CYAN}|${NC}"
-echo -e "${BOLD}${CYAN}|${NC}   ${DIM}Live captions for OBS / VMix${NC}                                              ${BOLD}${CYAN}|${NC}"
-echo -e "${BOLD}${CYAN}|${NC}                                                                              ${BOLD}${CYAN}|${NC}"
-echo -e "${BOLD}${CYAN}+------------------------------------------------------------------------------+${NC}"
+echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════════════════════╗"
+echo -e "║                                                                              ║"
+echo -e "║${NC}   ${BOLD}TRANSCRIPTION - Installer${NC}                                                  ${BOLD}${CYAN}║"
+echo -e "║${NC}   ${DIM}Live captions for OBS / VMix${NC}                                               ${BOLD}${CYAN}║"
+echo -e "║                                                                              ║"
+echo -e "╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
 # Helper functions

@@ -43,12 +43,12 @@ import { OVERLAY } from "./overlay";
   console.clear();
 
   console.log(`
-\x1b[1m\x1b[36m╔══════════════════════════════════════════════════════════════════════════════╗\x1b[0m
-\x1b[1m\x1b[36m║\x1b[0m                                                                              \x1b[1m\x1b[36m║\x1b[0m
-\x1b[1m\x1b[36m║\x1b[0m   \x1b[1m\x1b[35mTRANSCRIPTION v3.0\x1b[0m                                                        \x1b[1m\x1b[36m║\x1b[0m
-\x1b[1m\x1b[36m║\x1b[0m   \x1b[2mLive captions for OBS / VMix\x1b[0m                                              \x1b[1m\x1b[36m║\x1b[0m
-\x1b[1m\x1b[36m║\x1b[0m                                                                              \x1b[1m\x1b[36m║\x1b[0m
-\x1b[1m\x1b[36m╚══════════════════════════════════════════════════════════════════════════════╝\x1b[0m
+\x1b[1m\x1b[36m╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║\x1b[0m   \x1b[1m\x1b[35mTRANSCRIPTION v3.0\x1b[0m                                                        \x1b[1m\x1b[36m║
+║\x1b[0m   \x1b[2mLive captions for OBS / VMix\x1b[0m                                              \x1b[1m\x1b[36m║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝\x1b[0m
 
 \x1b[1m\x1b[32m[OK]\x1b[0m Server is now running.
 
@@ -82,7 +82,7 @@ import { OVERLAY } from "./overlay";
 \x1b[1mTO STOP THE SERVER\x1b[0m
 \x1b[1m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m
 
-   Press \x1b[1m\x1b[41m\x1b[37m CTRL + C \x1b[0m in this window to stop the server.
+   Press \x1b[1m\x1b[31mCTRL + C\x1b[0m in this window to stop the server.
 
 \x1b[2m──────────────────────────────────────────────────────────────────────────────────\x1b[0m
 \x1b[2m   Waiting for connections... (keep this window open)\x1b[0m
