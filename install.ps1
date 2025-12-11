@@ -1,5 +1,5 @@
 # Transcription Server Installer for Windows
-# Usage: irm https://your-domain.com/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/KazeTachinuu/gladia-to-obs/master/install.ps1 | iex
 # Or: powershell -ExecutionPolicy Bypass -File install.ps1
 
 param(
@@ -14,18 +14,9 @@ function Write-Info { param($msg) Write-Host "[INFO] $msg" -ForegroundColor Gree
 function Write-Warn { param($msg) Write-Host "[WARN] $msg" -ForegroundColor Yellow }
 function Write-Err { param($msg) Write-Host "[ERROR] $msg" -ForegroundColor Red; exit 1 }
 
-# Get download URL - UPDATE THIS with your actual hosting
 function Get-DownloadUrl {
     param($Platform, $Ver)
-
-    # Option 1: GitHub Releases
-    # return "https://github.com/YOUR_USERNAME/transcription/releases/download/v$Ver/transcription-$Platform.exe"
-
-    # Option 2: Direct URL
-    # return "https://your-bucket.s3.amazonaws.com/transcription/$Ver/transcription-$Platform.exe"
-
-    # Placeholder - update with your actual URL
-    return "https://github.com/YOUR_USERNAME/transcription/releases/latest/download/transcription-$Platform.exe"
+    return "https://github.com/KazeTachinuu/gladia-to-obs/releases/latest/download/transcription-$Platform.exe"
 }
 
 function Get-Checksum {

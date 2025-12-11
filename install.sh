@@ -2,7 +2,7 @@
 set -e
 
 # Transcription Server Installer
-# Usage: curl -fsSL https://your-domain.com/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/KazeTachinuu/gladia-to-obs/master/install.sh | bash
 
 VERSION="${1:-latest}"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
@@ -72,8 +72,6 @@ download() {
     fi
 }
 
-# Get download URL based on hosting choice
-# TODO: Update this with your actual hosting URL
 get_download_url() {
     local platform="$1"
     local version="$2"
@@ -81,17 +79,7 @@ get_download_url() {
 
     [ "$platform" = "win-x64" ] && ext=".exe"
 
-    # Option 1: GitHub Releases
-    # echo "https://github.com/YOUR_USERNAME/transcription/releases/download/v${version}/transcription-${platform}${ext}"
-
-    # Option 2: Direct URL (S3, GCS, Cloudflare R2, etc.)
-    # echo "https://your-bucket.s3.amazonaws.com/transcription/${version}/transcription-${platform}${ext}"
-
-    # Option 3: Your own server
-    # echo "https://your-domain.com/downloads/transcription-${platform}${ext}"
-
-    # Placeholder - update with your actual URL
-    echo "https://github.com/YOUR_USERNAME/transcription/releases/latest/download/transcription-${platform}${ext}"
+    echo "https://github.com/KazeTachinuu/gladia-to-obs/releases/latest/download/transcription-${platform}${ext}"
 }
 
 # Verify checksum (optional but recommended)
