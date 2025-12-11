@@ -431,6 +431,10 @@ export const DASHBOARD = `<!DOCTYPE html>
         throw new Error('WORKLET_NOT_SUPPORTED');
       }
 
+      // Create AudioContext first with default sample rate (avoids Firefox mismatch errors)
+      // See: https://bugzilla.mozilla.org/show_bug.cgi?id=1725336
+      ctx = new AudioContext();
+
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
@@ -440,13 +444,6 @@ export const DASHBOARD = `<!DOCTYPE html>
         if (e.name === 'NotFoundError') throw new Error('MIC_NOT_FOUND');
         throw new Error('MIC_ERROR:' + e.message);
       }
-
-      // Use the microphone's native sample rate to avoid mismatch errors
-      const track = stream.getAudioTracks()[0];
-      const settings = track.getSettings();
-      const micSampleRate = settings.sampleRate || 48000;
-
-      ctx = new AudioContext({ sampleRate: micSampleRate });
 
       // Register worklet from inline code
       const blob = new Blob([${JSON.stringify(AUDIO_PROCESSOR)}], { type: 'application/javascript' });
