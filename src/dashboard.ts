@@ -433,7 +433,7 @@ export const DASHBOARD = `<!DOCTYPE html>
 
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, sampleRate: 48000 }
+          audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
         });
       } catch (e) {
         if (e.name === 'NotAllowedError') throw new Error('MIC_DENIED');
@@ -441,7 +441,12 @@ export const DASHBOARD = `<!DOCTYPE html>
         throw new Error('MIC_ERROR:' + e.message);
       }
 
-      ctx = new AudioContext({ sampleRate: 48000 });
+      // Use the microphone's native sample rate to avoid mismatch errors
+      const track = stream.getAudioTracks()[0];
+      const settings = track.getSettings();
+      const micSampleRate = settings.sampleRate || 48000;
+
+      ctx = new AudioContext({ sampleRate: micSampleRate });
 
       // Register worklet from inline code
       const blob = new Blob([${JSON.stringify(AUDIO_PROCESSOR)}], { type: 'application/javascript' });
