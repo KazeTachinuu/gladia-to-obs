@@ -174,6 +174,48 @@ export const DASHBOARD = `<!DOCTYPE html>
         </div>
       </div>
 
+      <!-- Display Settings -->
+      <div class="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h2 class="font-medium mb-4">Display Settings</h2>
+        <div class="space-y-4">
+          <label class="block">
+            <div class="flex justify-between text-sm mb-2">
+              <span class="text-muted-foreground">Text Size</span>
+              <span id="font-size-val" class="text-primary font-mono">52px</span>
+            </div>
+            <input type="range" id="font-size" min="24" max="80" step="2" value="52" class="w-full">
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block">
+              <span class="text-sm text-muted-foreground">Alignment</span>
+              <select id="text-align" class="mt-1 w-full h-9 px-3 rounded-md bg-secondary border border-border text-sm focus-ring">
+                <option value="center">Center</option>
+                <option value="left">Left</option>
+                <option value="right">Right</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="text-sm text-muted-foreground">Background</span>
+              <select id="bg-style" class="mt-1 w-full h-9 px-3 rounded-md bg-secondary border border-border text-sm focus-ring">
+                <option value="none">None (Netflix style)</option>
+                <option value="box">Black box</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Vocabulary -->
+      <div class="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-medium">Custom Vocabulary</h2>
+          <span class="text-xs text-muted-foreground">Optional</span>
+        </div>
+        <p class="text-xs text-muted-foreground mb-3">Add words to improve spelling accuracy (names, brands, technical terms). Separate with commas.</p>
+        <textarea id="vocab" rows="2" placeholder="e.g. Gladia, OBS Studio, VMix, YouTube"
+          class="w-full px-3 py-2 rounded-md bg-secondary border border-border text-sm focus-ring resize-none"></textarea>
+      </div>
+
       <!-- OBS -->
       <div class="rounded-lg border border-border bg-card p-5 shadow-sm">
         <h2 class="font-medium mb-3">OBS Browser Source</h2>
@@ -197,6 +239,8 @@ export const DASHBOARD = `<!DOCTYPE html>
     const timingFeedback = $('timing-feedback'), feedbackText = $('feedback-text'), restartBtn = $('restart-btn');
     const btn = $('btn'), iconPlay = $('icon-play'), iconStop = $('icon-stop'), btnText = $('btn-text');
     const dot = $('dot'), statusText = $('status-text'), preview = $('preview'), stats = $('stats');
+    const vocab = $('vocab'), fontSize = $('font-size'), fontSizeVal = $('font-size-val');
+    const textAlign = $('text-align'), bgStyle = $('bg-style');
 
     // State
     let running = false, ws = null, ctx = null, stream = null, worklet = null;
@@ -205,7 +249,10 @@ export const DASHBOARD = `<!DOCTYPE html>
 
     // Config persistence
     const load = () => { try { return JSON.parse(localStorage.getItem('t') || '{}'); } catch { return {}; } };
-    const save = () => localStorage.setItem('t', JSON.stringify({ k: key.value, l: lang.value, s: silence.value, d: duration.value }));
+    const save = () => localStorage.setItem('t', JSON.stringify({
+      k: key.value, l: lang.value, s: silence.value, d: duration.value,
+      vocab: vocab.value, fontSize: fontSize.value, textAlign: textAlign.value, bgStyle: bgStyle.value
+    }));
 
     // Feedback helper
     const showFeedback = (msg, showRestart = false) => {
@@ -251,6 +298,10 @@ export const DASHBOARD = `<!DOCTYPE html>
     if (cfg.l) lang.value = cfg.l;
     if (cfg.s) { silence.value = cfg.s; silenceVal.textContent = cfg.s + 's'; silenceHint.textContent = getSilenceDescription(+cfg.s); }
     if (cfg.d) { duration.value = cfg.d; durationVal.textContent = cfg.d + 's'; durationHint.textContent = getDurationDescription(+cfg.d); }
+    if (cfg.vocab) vocab.value = cfg.vocab;
+    if (cfg.fontSize) { fontSize.value = cfg.fontSize; fontSizeVal.textContent = cfg.fontSize + 'px'; }
+    if (cfg.textAlign) textAlign.value = cfg.textAlign;
+    if (cfg.bgStyle) bgStyle.value = cfg.bgStyle;
 
     // Slider handlers with feedback
     silence.oninput = () => {
@@ -291,6 +342,46 @@ export const DASHBOARD = `<!DOCTYPE html>
       }
     };
     key.onchange = save;
+
+    // Display settings handlers
+    fontSize.oninput = () => {
+      const val = fontSize.value;
+      fontSizeVal.textContent = val + 'px';
+      fontSizeVal.classList.add('scale-110');
+      setTimeout(() => fontSizeVal.classList.remove('scale-110'), 150);
+      save();
+      updateOverlayStyles();
+    };
+
+    textAlign.onchange = () => {
+      save();
+      updateOverlayStyles();
+    };
+
+    bgStyle.onchange = () => {
+      save();
+      updateOverlayStyles();
+    };
+
+    vocab.onchange = () => {
+      save();
+      if (running) {
+        showFeedback('Vocabulary updated - Restart to apply', true);
+      }
+    };
+
+    // Update overlay styles via broadcast
+    const updateOverlayStyles = () => {
+      fetch('/style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fontSize: fontSize.value,
+          textAlign: textAlign.value,
+          bgStyle: bgStyle.value
+        })
+      });
+    };
 
     // Status & Error display
     const setStatus = (t, type) => {
@@ -389,15 +480,29 @@ export const DASHBOARD = `<!DOCTYPE html>
         // API call
         let res;
         try {
+          // Build request body
+          const reqBody = {
+            encoding: 'wav/pcm', sample_rate: 16000, bit_depth: 16, channels: 1,
+            endpointing: +silence.value,
+            maximum_duration_without_endpointing: +duration.value,
+            language_config: { languages: [lang.value] }
+          };
+
+          // Add custom vocabulary if provided
+          const vocabWords = vocab.value.split(/[,;]+/).map(w => w.trim()).filter(w => w.length > 0);
+          if (vocabWords.length > 0) {
+            reqBody.realtime_processing = {
+              custom_vocabulary: true,
+              custom_vocabulary_config: {
+                vocabulary: vocabWords
+              }
+            };
+          }
+
           res = await fetch('https://api.gladia.io/v2/live', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-gladia-key': apiKey },
-            body: JSON.stringify({
-              encoding: 'wav/pcm', sample_rate: 16000, bit_depth: 16, channels: 1,
-              endpointing: +silence.value,
-              maximum_duration_without_endpointing: +duration.value,
-              language_config: { languages: [lang.value] }
-            })
+            body: JSON.stringify(reqBody)
           });
         } catch (e) {
           throw new Error('NETWORK:' + e.message);

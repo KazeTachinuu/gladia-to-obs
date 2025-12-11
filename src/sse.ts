@@ -30,6 +30,17 @@ export function broadcast(text: string): void {
   }
 }
 
+export function broadcastStyle(style: { fontSize: string; textAlign: string; bgStyle: string }): void {
+  const data = encoder.encode(`data:${JSON.stringify({ type: 'style', ...style })}\n\n`);
+  for (const [id, client] of clients) {
+    try {
+      client.controller.enqueue(data);
+    } catch {
+      removeClient(id);
+    }
+  }
+}
+
 // Keep-alive ping
 setInterval(() => {
   const ping = encoder.encode(`: ping\n\n`);

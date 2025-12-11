@@ -4,7 +4,7 @@
  */
 
 import { PORT } from "./types";
-import { addClient, removeClient, broadcast } from "./sse";
+import { addClient, removeClient, broadcast, broadcastStyle } from "./sse";
 import { DASHBOARD } from "./dashboard";
 import { OVERLAY } from "./overlay";
 
@@ -136,6 +136,14 @@ import { OVERLAY } from "./overlay";
       if (pathname === "/broadcast" && req.method === "POST") {
         return req.json().then(({ text }: { text: string }) => {
           if (text) broadcast(text);
+          return new Response("ok", { status: 200 });
+        }).catch(() => new Response("error", { status: 400 }));
+      }
+
+      // Style endpoint
+      if (pathname === "/style" && req.method === "POST") {
+        return req.json().then((style: { fontSize: string; textAlign: string; bgStyle: string }) => {
+          broadcastStyle(style);
           return new Response("ok", { status: 200 });
         }).catch(() => new Response("error", { status: 400 }));
       }
