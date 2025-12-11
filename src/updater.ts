@@ -19,7 +19,7 @@ function getPlatformAssetName(): string {
   if (platform === "darwin" && arch === "x64") return "transcription-mac-x64";
   if (platform === "linux" && arch === "x64") return "transcription-linux-x64";
   if (platform === "linux" && arch === "arm64") return "transcription-linux-arm64";
-  if (platform === "win32" && arch === "arm64") return "transcription-win-arm64.exe";
+  // Windows ARM64 uses x64 binary via emulation (Bun doesn't support win-arm64)
   if (platform === "win32") return "transcription-win-x64.exe";
 
   return "";

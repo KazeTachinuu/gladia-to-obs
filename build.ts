@@ -12,7 +12,7 @@ const TARGETS = {
   "linux-x64": "bun-linux-x64",
   "linux-arm64": "bun-linux-arm64",
   "win-x64": "bun-windows-x64",
-  "win-arm64": "bun-windows-arm64",
+  // win-arm64 not supported by Bun yet: https://github.com/oven-sh/bun/issues/9824
 } as const;
 
 type Target = keyof typeof TARGETS;

@@ -1,6 +1,6 @@
 {
   "name": "transcription",
-  "version": "3.5.6",
+  "version": "3.5.7",
   "description": "Live transcription overlay for OBS/VMix with Gladia API",
   "scripts": {
     "dev": "bun run src/index.ts",
