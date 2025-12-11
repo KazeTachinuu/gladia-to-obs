@@ -8,10 +8,12 @@ import { addClient, removeClient, broadcast, broadcastStyle } from "./sse";
 import { DASHBOARD } from "./dashboard";
 import { OVERLAY } from "./overlay";
 import { autoUpdate } from "./updater";
+import { ensureInPath } from "./setup";
 
 // Check if already running and start server
 (async () => {
-  // Auto-update check (runs silently, updates if newer version available)
+  // Setup: ensure in PATH, check for updates
+  await ensureInPath();
   await autoUpdate();
 
   // Check if port is already in use
