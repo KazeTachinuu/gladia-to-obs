@@ -1,79 +1,107 @@
 # Transcription
 
-Live transcription overlay for OBS/VMix using the Gladia API.
+Live captions overlay for OBS and VMix using the Gladia API.
 
 ![Version](https://img.shields.io/badge/version-3.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## Features
-
-- Real-time speech-to-text transcription
-- Netflix-style captions overlay (1920x1080)
-- Works with OBS, VMix, or any browser source
-- 10+ language support
-- Configurable silence detection and segment duration
-- Single binary - no dependencies
 
 ## Installation
 
 ### macOS / Linux
 
+Open a Terminal and paste this command:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/KazeTachinuu/gladia-to-obs/master/install.sh | bash
 ```
 
-### Windows (PowerShell)
+### Windows
+
+Open PowerShell and paste this command:
 
 ```powershell
 irm https://raw.githubusercontent.com/KazeTachinuu/gladia-to-obs/master/install.ps1 | iex
 ```
 
-## Usage
 
-1. Get a free API key from [Gladia](https://gladia.io)
-2. Run `transcription` in your terminal
-3. Enter your API key and click **Start**
-4. Add `http://localhost:8080/overlay` as a Browser Source in OBS (1920x1080)
+## Usage Guide
 
-## OBS Setup
+### Step 1: Get a Gladia API Key (free)
 
-1. Add a **Browser Source** to your scene
-2. Set the URL to `http://localhost:8080/overlay`
-3. Set dimensions to **1920x1080**
-4. Enable **Shutdown source when not visible** (optional)
+1. Go to **[gladia.io](https://gladia.io)**
+2. Create a free account
+3. Copy your API key from the dashboard
 
-The overlay has a transparent background, so captions appear directly over your content.
 
-## Configuration
+### Step 2: Start the server
+
+Open a Terminal (or PowerShell on Windows) and type:
+
+```
+transcription
+```
+
+A web page will open automatically in your browser.
+
+
+### Step 3: Configure transcription
+
+On the web page that opened:
+
+1. **Paste your API key** in the "API Key" field
+2. **Select your language** from the dropdown
+3. **Click "Start"** to begin transcription
+
+You should see text appearing in the "Preview" area.
+
+
+### Step 4: Add captions to OBS
+
+1. In OBS, click **"+" in Sources**
+2. Select **"Browser"** (or "Browser Source")
+3. Give it a name (e.g., "Captions")
+4. In the settings:
+   - **URL**: `http://localhost:8080/overlay`
+   - **Width**: `1920`
+   - **Height**: `1080`
+5. Click **OK**
+
+Captions will appear at the bottom of your screen with a transparent background.
+
+
+### To stop the server
+
+In the Terminal, press **CTRL + C**.
+
+
+## Advanced Settings
 
 | Setting | Description |
 |---------|-------------|
 | **Language** | Primary transcription language |
-| **Silence Detection** | How quickly to end a segment after silence (0.01-2s) |
-| **Max Duration** | Maximum segment length before forcing a break (5-60s) |
+| **Silence Detection** | Delay before cutting a segment after silence (0.01-2s) |
+| **Max Duration** | Maximum segment length before automatic cut (5-60s) |
+
 
 ## Supported Languages
 
 English, French, Spanish, German, Italian, Portuguese, Japanese, Chinese, Korean, Arabic
 
-## Requirements
-
-- Gladia API key (free tier available)
-- Microphone
-- Modern browser (for the dashboard)
 
 ## Development
 
 ```bash
-# Run in development mode
+# Development mode
 bun run dev
 
 # Build for current platform
 bun run build
 
-# Build all platforms
+# Build for all platforms
 bun run build:all
 ```
+
 
 ## License
 

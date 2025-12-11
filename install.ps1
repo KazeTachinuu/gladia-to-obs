@@ -1,45 +1,75 @@
 # Transcription Server Installer for Windows
 # Usage: irm https://raw.githubusercontent.com/KazeTachinuu/gladia-to-obs/master/install.ps1 | iex
-# Or: powershell -ExecutionPolicy Bypass -File install.ps1
 
 param(
-    [string]$Version = "latest",
     [string]$InstallDir = "$env:LOCALAPPDATA\Programs\transcription"
 )
 
 $ErrorActionPreference = "Stop"
+$Repo = "KazeTachinuu/gladia-to-obs"
 $BinaryName = "transcription"
 
-function Write-Info { param($msg) Write-Host "[INFO] $msg" -ForegroundColor Green }
-function Write-Warn { param($msg) Write-Host "[WARN] $msg" -ForegroundColor Yellow }
-function Write-Err { param($msg) Write-Host "[ERROR] $msg" -ForegroundColor Red; exit 1 }
+# Clear screen and show header
+Clear-Host
+Write-Host ""
+Write-Host "+------------------------------------------------------------------------------+" -ForegroundColor Cyan
+Write-Host "|                                                                              |" -ForegroundColor Cyan
+Write-Host "|   " -ForegroundColor Cyan -NoNewline
+Write-Host "TRANSCRIPTION - Installer" -ForegroundColor Magenta -NoNewline
+Write-Host "                                                 |" -ForegroundColor Cyan
+Write-Host "|   " -ForegroundColor Cyan -NoNewline
+Write-Host "Live captions for OBS / VMix" -ForegroundColor DarkGray -NoNewline
+Write-Host "                                              |" -ForegroundColor Cyan
+Write-Host "|                                                                              |" -ForegroundColor Cyan
+Write-Host "+------------------------------------------------------------------------------+" -ForegroundColor Cyan
+Write-Host ""
+
+function Write-Step { param($msg) Write-Host "[..]" -ForegroundColor Cyan -NoNewline; Write-Host " $msg" }
+function Write-Ok { param($msg) Write-Host "[OK]" -ForegroundColor Green -NoNewline; Write-Host " $msg" }
+function Write-Warn { param($msg) Write-Host "[!]" -ForegroundColor Yellow -NoNewline; Write-Host " $msg" }
+function Write-Fail { param($msg) Write-Host "[ERROR]" -ForegroundColor Red -NoNewline; Write-Host " $msg"; exit 1 }
 
 function Get-DownloadUrl {
-    param($Platform, $Ver)
-    return "https://github.com/KazeTachinuu/gladia-to-obs/releases/latest/download/transcription-$Platform.exe"
+    param($Platform)
+    return "https://github.com/$Repo/releases/latest/download/transcription-$Platform.exe"
 }
 
-function Get-Checksum {
-    param($FilePath)
-    return (Get-FileHash -Path $FilePath -Algorithm SHA256).Hash.ToLower()
+function Get-ChecksumsUrl {
+    return "https://github.com/$Repo/releases/latest/download/checksums.txt"
 }
 
 function Test-Checksum {
-    param($FilePath, $Expected)
+    param($FilePath, $Platform)
 
-    if (-not $Expected) {
-        Write-Warn "No checksum provided, skipping verification"
+    try {
+        Write-Step "Downloading checksums..."
+        $checksumsUrl = Get-ChecksumsUrl
+        $checksums = (Invoke-WebRequest -Uri $checksumsUrl -UseBasicParsing).Content
+
+        # Find the checksum for our platform
+        $pattern = "([a-f0-9]{64})\s+transcription-$Platform"
+        if ($checksums -match $pattern) {
+            $expected = $Matches[1]
+
+            $actual = (Get-FileHash -Path $FilePath -Algorithm SHA256).Hash.ToLower()
+
+            if ($actual -ne $expected) {
+                Write-Fail "Checksum verification failed. The file may be corrupted."
+                return $false
+            }
+
+            Write-Ok "File integrity verified"
+            return $true
+        }
+        else {
+            Write-Warn "Checksums not available, skipping verification"
+            return $true
+        }
+    }
+    catch {
+        Write-Warn "Could not verify checksum: $_"
         return $true
     }
-
-    $actual = Get-Checksum $FilePath
-    if ($actual -ne $Expected.ToLower()) {
-        Write-Err "Checksum verification failed!`nExpected: $Expected`nActual: $actual"
-        return $false
-    }
-
-    Write-Info "Checksum verified"
-    return $true
 }
 
 function Add-ToPath {
@@ -47,68 +77,90 @@ function Add-ToPath {
 
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
     if ($currentPath -notlike "*$Dir*") {
-        Write-Info "Adding $Dir to PATH"
+        Write-Step "Adding to PATH..."
         [Environment]::SetEnvironmentVariable(
             "Path",
             "$currentPath;$Dir",
             "User"
         )
         $env:Path = "$env:Path;$Dir"
+        Write-Ok "PATH updated"
+        return $true
     }
+    return $false
 }
 
 # Main installation
 function Install-Transcription {
-    Write-Host ""
-    Write-Host "Transcription Server Installer" -ForegroundColor Cyan
-    Write-Host "===============================" -ForegroundColor Cyan
-    Write-Host ""
-
     $platform = "win-x64"
-    Write-Info "Platform: $platform"
+    Write-Step "Detecting platform..."
+    Write-Ok "Platform: $platform"
 
     # Create install directory
+    Write-Step "Creating install directory..."
     if (-not (Test-Path $InstallDir)) {
         New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
     }
+    Write-Ok "Directory: $InstallDir"
 
-    $downloadUrl = Get-DownloadUrl -Platform $platform -Ver $Version
+    $downloadUrl = Get-DownloadUrl -Platform $platform
     $tempFile = Join-Path $env:TEMP "transcription-download.exe"
     $installPath = Join-Path $InstallDir "$BinaryName.exe"
 
-    Write-Info "Downloading from $downloadUrl"
+    Write-Step "Downloading Transcription..."
 
     try {
         # Use TLS 1.2
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-        $webClient = New-Object System.Net.WebClient
-        $webClient.DownloadFile($downloadUrl, $tempFile)
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $tempFile -UseBasicParsing
+        $ProgressPreference = 'Continue'
     }
     catch {
-        Write-Err "Download failed: $_"
+        Write-Fail "Download failed. Please check your internet connection."
     }
 
-    # Optional: Verify checksum
-    # Test-Checksum -FilePath $tempFile -Expected "EXPECTED_SHA256_HERE"
+    Write-Ok "Download complete"
+
+    # Verify checksum
+    Write-Step "Verifying integrity..."
+    Test-Checksum -FilePath $tempFile -Platform $platform
 
     # Move to install location
+    Write-Step "Installing..."
     Move-Item -Path $tempFile -Destination $installPath -Force
+    Write-Ok "Installed to $installPath"
 
-    Write-Info "Installed to $installPath"
+    Write-Host ""
+    Write-Host "------------------------------------------------------------------------------" -ForegroundColor White
 
     # Add to PATH
-    Add-ToPath -Dir $InstallDir
+    $pathUpdated = Add-ToPath -Dir $InstallDir
 
     Write-Host ""
-    Write-Host "Installation complete!" -ForegroundColor Green
+    Write-Host "[OK] Installation complete!" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Run the transcription server:" -ForegroundColor Cyan
-    Write-Host "  transcription" -ForegroundColor White
+    Write-Host "------------------------------------------------------------------------------" -ForegroundColor White
+    Write-Host "NEXT STEPS" -ForegroundColor White
+    Write-Host "------------------------------------------------------------------------------" -ForegroundColor White
     Write-Host ""
-    Write-Host "Then open http://localhost:8080 in your browser" -ForegroundColor Cyan
+    Write-Host "   1. Get a free API key at https://gladia.io"
     Write-Host ""
-    Write-Host "NOTE: You may need to restart your terminal for PATH changes to take effect." -ForegroundColor Yellow
+    Write-Host "   2. Start the server with this command:"
+    Write-Host ""
+    Write-Host "      transcription" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "   3. A web page will open automatically for configuration"
+    Write-Host ""
+
+    if ($pathUpdated) {
+        Write-Host "[!] " -ForegroundColor Yellow -NoNewline
+        Write-Host "Restart your terminal for PATH changes to take effect."
+        Write-Host ""
+    }
+
+    Write-Host "------------------------------------------------------------------------------" -ForegroundColor DarkGray
 }
 
 Install-Transcription
