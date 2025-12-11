@@ -117,6 +117,11 @@ export async function downloadAndReplace(url: string, version: string): Promise<
 }
 
 export async function autoUpdate(): Promise<void> {
+  // Skip in dev mode (when running via bun, not compiled binary)
+  if (process.execPath.includes("bun")) {
+    return;
+  }
+
   const update = await checkForUpdates();
 
   if (!update.available || !update.url || !update.version) {

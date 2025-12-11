@@ -1,5 +1,5 @@
 /**
- * Transcription Server v3.0
+ * Transcription Server
  * Modern live transcription for OBS/VMix
  */
 
@@ -23,17 +23,11 @@ import { autoUpdate } from "./updater";
     if (response.ok) {
       console.clear();
       console.log(`
-\x1b[1m\x1b[36m╔══════════════════════════════════════════════════════════════════════════════╗\x1b[0m
-\x1b[1m\x1b[36m║\x1b[0m                                                                              \x1b[1m\x1b[36m║\x1b[0m
-\x1b[1m\x1b[36m║\x1b[0m   \x1b[1m\x1b[35mTRANSCRIPTION v${VERSION}\x1b[0m                                                        \x1b[1m\x1b[36m║\x1b[0m
-\x1b[1m\x1b[36m║\x1b[0m   \x1b[2mLive captions for OBS / VMix\x1b[0m                                              \x1b[1m\x1b[36m║\x1b[0m
-\x1b[1m\x1b[36m║\x1b[0m                                                                              \x1b[1m\x1b[36m║\x1b[0m
-\x1b[1m\x1b[36m╚══════════════════════════════════════════════════════════════════════════════╝\x1b[0m
+\x1b[1m\x1b[35mTRANSCRIPTION v${VERSION}\x1b[0m
+Live captions for OBS / VMix
 
-\x1b[1m\x1b[33m[INFO]\x1b[0m Server is already running.
-
-   \x1b[36m>\x1b[0m  Opening configuration page...
-      \x1b[4m\x1b[36mhttp://localhost:${PORT}\x1b[0m
+\x1b[33m[INFO]\x1b[0m Server is already running.
+       Opening \x1b[4mhttp://localhost:${PORT}\x1b[0m
 `);
       const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
       Bun.spawn([cmd, `http://localhost:${PORT}`]);
@@ -47,49 +41,17 @@ import { autoUpdate } from "./updater";
   console.clear();
 
   console.log(`
-\x1b[1m\x1b[36m╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                              ║
-║\x1b[0m   \x1b[1m\x1b[35mTRANSCRIPTION v${VERSION}\x1b[0m                                                        \x1b[1m\x1b[36m║
-║\x1b[0m   \x1b[2mLive captions for OBS / VMix\x1b[0m                                              \x1b[1m\x1b[36m║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝\x1b[0m
+\x1b[1m\x1b[35mTRANSCRIPTION v${VERSION}\x1b[0m
+Live captions for OBS / VMix
 
-\x1b[1m\x1b[32m[OK]\x1b[0m Server is now running.
+\x1b[32m[OK]\x1b[0m Server running at \x1b[4mhttp://localhost:${PORT}\x1b[0m
 
-\x1b[1m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m
-\x1b[1mSTEP 1: CONFIGURATION\x1b[0m
-\x1b[1m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m
+\x1b[1mSETUP:\x1b[0m
+  1. Paste your Gladia API key
+  2. Select language & click Start
+  3. In OBS: add Browser Source → \x1b[4mhttp://localhost:${PORT}/overlay\x1b[0m (1920x1080)
 
-   A web page has opened automatically in your browser.
-
-   \x1b[36m>\x1b[0m  If it didn't open, click this link:
-      \x1b[4m\x1b[36mhttp://localhost:${PORT}\x1b[0m
-
-   \x1b[36m>\x1b[0m  On this page:
-      \x1b[32m1.\x1b[0m Paste your Gladia API key (free at \x1b[4mgladia.io\x1b[0m)
-      \x1b[32m2.\x1b[0m Select your language
-      \x1b[32m3.\x1b[0m Click the \x1b[1m\x1b[32m"Start"\x1b[0m button
-
-\x1b[1m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m
-\x1b[1mSTEP 2: ADD TO OBS / VMIX\x1b[0m
-\x1b[1m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m
-
-   In OBS, add a \x1b[1m"Browser Source"\x1b[0m with these settings:
-
-   \x1b[36m>\x1b[0m  URL to copy:
-      \x1b[4m\x1b[36mhttp://localhost:${PORT}/overlay\x1b[0m
-
-   \x1b[36m>\x1b[0m  Dimensions:
-      Width: \x1b[1m1920\x1b[0m  |  Height: \x1b[1m1080\x1b[0m
-
-\x1b[1m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m
-\x1b[1mTO STOP THE SERVER\x1b[0m
-\x1b[1m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m
-
-   Press \x1b[1m\x1b[31mCTRL + C\x1b[0m in this window to stop the server.
-
-\x1b[2m──────────────────────────────────────────────────────────────────────────────────\x1b[0m
-\x1b[2m   Waiting for connections... (keep this window open)\x1b[0m
+Press \x1b[31mCTRL+C\x1b[0m to stop.
 `);
 
   Bun.serve({

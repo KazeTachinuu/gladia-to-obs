@@ -6,8 +6,9 @@ export interface SSEClient {
 
 export const PORT = 8080;
 
-// Version - injected at build time, fallback for dev
-export const VERSION = process.env.APP_VERSION || "3.3.0";
+// Single source of truth: package.json
+import pkg from "../package.json";
+export const VERSION = pkg.version;
 
 // GitHub repo for auto-updates
 export const GITHUB_OWNER = "KazeTachinuu";
