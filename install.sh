@@ -135,44 +135,60 @@ setup_path() {
     local added=false
 
     # Detect shell config file
-    if [ -n "$ZSH_VERSION" ] || [ "$SHELL" = "/bin/zsh" ]; then
-        shell_config="$HOME/.zshrc"
-    elif [ -n "$BASH_VERSION" ] || [ "$SHELL" = "/bin/bash" ]; then
-        if [ -f "$HOME/.bashrc" ]; then
-            shell_config="$HOME/.bashrc"
-        elif [ -f "$HOME/.bash_profile" ]; then
-            shell_config="$HOME/.bash_profile"
-        fi
-    fi
+    case "$(basename "$SHELL")" in
+        zsh)  shell_config="$HOME/.zshrc" ;;
+        bash)
+            if [ -f "$HOME/.bashrc" ]; then
+                shell_config="$HOME/.bashrc"
+            elif [ -f "$HOME/.bash_profile" ]; then
+                shell_config="$HOME/.bash_profile"
+            else
+                shell_config="$HOME/.bashrc"
+            fi
+            ;;
+        fish) shell_config="$HOME/.config/fish/config.fish" ;;
+        *)    shell_config="$HOME/.profile" ;;
+    esac
 
     # Check if already in PATH
     if [[ ":$PATH:" == *":$install_dir:"* ]]; then
+        info "Already in PATH"
         return 0
     fi
 
-    # Add to config if possible
-    if [ -n "$shell_config" ] && [ -f "$shell_config" ]; then
-        if ! grep -q "$install_dir" "$shell_config" 2>/dev/null; then
+    # Check if export line already exists in config
+    if [ -f "$shell_config" ] && grep -q "export PATH=.*$install_dir" "$shell_config" 2>/dev/null; then
+        info "PATH configured in $shell_config (restart terminal to apply)"
+        return 0
+    fi
+
+    # Add to config
+    if [ -n "$shell_config" ]; then
+        # Create file if it doesn't exist
+        touch "$shell_config" 2>/dev/null || true
+
+        if [ -w "$shell_config" ]; then
             echo "" >> "$shell_config"
-            echo "# Transcription" >> "$shell_config"
-            echo "export PATH=\"\$PATH:$install_dir\"" >> "$shell_config"
+            echo "# transcription" >> "$shell_config"
+            if [ "$(basename "$SHELL")" = "fish" ]; then
+                echo "set -gx PATH \"$install_dir\" \$PATH" >> "$shell_config"
+            else
+                echo "export PATH=\"$install_dir:\$PATH\"" >> "$shell_config"
+            fi
             added=true
         fi
     fi
 
     if [ "$added" = true ]; then
-        info "PATH updated in $shell_config"
+        info "Added to PATH in $shell_config"
         echo ""
-        echo -e "${YELLOW}[!]${NC} To use the command immediately, run:"
-        echo ""
+        echo -e "    ${YELLOW}Restart your terminal, or run:${NC}"
         echo -e "    ${BOLD}source $shell_config${NC}"
         echo ""
     else
-        warn "$install_dir is not in your PATH"
         echo ""
-        echo "    Add this line to your shell config file:"
-        echo ""
-        echo -e "    ${BOLD}export PATH=\"\$PATH:$install_dir\"${NC}"
+        echo -e "    ${YELLOW}Add this to your shell config:${NC}"
+        echo -e "    ${BOLD}export PATH=\"$install_dir:\$PATH\"${NC}"
         echo ""
     fi
 }
