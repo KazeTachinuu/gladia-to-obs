@@ -23,7 +23,9 @@ function getInstallDir(): string {
 
 async function isInPath(): Promise<boolean> {
   try {
-    const result = await $`which ${BINARY_NAME}`.quiet().nothrow();
+    // Windows uses 'where', Unix uses 'which'
+    const cmd = process.platform === "win32" ? "where" : "which";
+    const result = await $`${cmd} ${BINARY_NAME}`.quiet().nothrow();
     return result.exitCode === 0;
   } catch {
     return false;
@@ -118,14 +120,11 @@ export async function ensureInPath(): Promise<void> {
 
   try {
     if (!alreadyInstalled) {
-      // Create install directory
-      await $`mkdir -p ${installDir}`.quiet();
-
-      // Copy binary to install location
+      // Create install directory and copy binary
       if (process.platform === "win32") {
-        await $`copy "${execPath}" "${destPath}"`.quiet();
+        await $`powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path '${installDir}' | Out-Null; Copy-Item '${execPath}' '${destPath}' -Force"`.quiet();
       } else {
-        await $`cp "${execPath}" "${destPath}" && chmod +x "${destPath}"`.quiet();
+        await $`mkdir -p ${installDir} && cp "${execPath}" "${destPath}" && chmod +x "${destPath}"`.quiet();
       }
     }
 

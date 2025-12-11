@@ -10,11 +10,24 @@ import { OVERLAY } from "./overlay";
 import { autoUpdate } from "./updater";
 import { ensureInPath } from "./setup";
 
+// Global error handler to catch crashes
+process.on("uncaughtException", (err) => {
+  console.error("\x1b[31m[FATAL]\x1b[0m", err.message);
+  console.error(err.stack);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("\x1b[31m[FATAL]\x1b[0m Unhandled rejection:", err);
+  process.exit(1);
+});
+
 // Check if already running and start server
 (async () => {
-  // Setup: ensure in PATH, check for updates
-  await ensureInPath();
-  await autoUpdate();
+  try {
+    // Setup: ensure in PATH, check for updates
+    await ensureInPath();
+    await autoUpdate();
 
   // Check if port is already in use
   try {
@@ -31,8 +44,13 @@ Live captions for OBS / VMix
 \x1b[33m[INFO]\x1b[0m Server is already running.
        Opening \x1b[4mhttp://localhost:${PORT}\x1b[0m
 `);
-      const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-      Bun.spawn([cmd, `http://localhost:${PORT}`]);
+      // Open browser (Windows needs cmd /c start)
+      if (process.platform === "win32") {
+        Bun.spawn(["cmd", "/c", "start", `http://localhost:${PORT}`]);
+      } else {
+        const cmd = process.platform === "darwin" ? "open" : "xdg-open";
+        Bun.spawn([cmd, `http://localhost:${PORT}`]);
+      }
       process.exit(0);
     }
   } catch {
@@ -121,6 +139,14 @@ Press \x1b[31mCTRL+C\x1b[0m to stop.
   });
 
   // Open browser
-  const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
-  Bun.spawn([cmd, `http://localhost:${PORT}`]);
+  if (process.platform === "win32") {
+    Bun.spawn(["cmd", "/c", "start", `http://localhost:${PORT}`]);
+  } else {
+    const cmd = process.platform === "darwin" ? "open" : "xdg-open";
+    Bun.spawn([cmd, `http://localhost:${PORT}`]);
+  }
+  } catch (err) {
+    console.error("\x1b[31m[FATAL]\x1b[0m Startup error:", err);
+    process.exit(1);
+  }
 })();
