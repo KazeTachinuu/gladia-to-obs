@@ -95,8 +95,14 @@ function Add-ToPath {
 
 # Main installation
 function Install-Transcription {
-    $platform = "win-x64"
     Write-Step "Detecting platform..."
+    # Detect ARM64 vs x64
+    $arch = $env:PROCESSOR_ARCHITECTURE
+    if ($arch -eq "ARM64") {
+        $platform = "win-arm64"
+    } else {
+        $platform = "win-x64"
+    }
     Write-Ok "Platform: $platform"
 
     # Create install directory

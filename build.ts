@@ -12,6 +12,7 @@ const TARGETS = {
   "linux-x64": "bun-linux-x64",
   "linux-arm64": "bun-linux-arm64",
   "win-x64": "bun-windows-x64-baseline", // Use baseline for broader CPU compatibility
+  "win-arm64": "bun-windows-arm64",
 } as const;
 
 type Target = keyof typeof TARGETS;
