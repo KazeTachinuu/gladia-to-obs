@@ -6,668 +6,1075 @@ export const DASHBOARD = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Transcription</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            background: "oklch(0.145 0 0)",
-            foreground: "oklch(0.985 0 0)",
-            card: { DEFAULT: "oklch(0.178 0 0)", foreground: "oklch(0.985 0 0)" },
-            primary: { DEFAULT: "oklch(0.696 0.17 162)", foreground: "oklch(0.145 0 0)" },
-            secondary: { DEFAULT: "oklch(0.269 0 0)", foreground: "oklch(0.985 0 0)" },
-            muted: { DEFAULT: "oklch(0.269 0 0)", foreground: "oklch(0.708 0 0)" },
-            destructive: { DEFAULT: "oklch(0.577 0.245 27)", foreground: "oklch(0.985 0 0)" },
-            border: "oklch(0.269 0 0)",
-            ring: "oklch(0.696 0.17 162)",
-          },
-        }
-      }
-    }
-  </script>
+  <title>Live Transcription</title>
   <style>
-    :root { color-scheme: dark; }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* =========================================================================
+       DESIGN TOKENS (shadcn/ui dark theme)
+       ========================================================================= */
+    :root {
+      --background: hsl(240 10% 3.9%);
+      --foreground: hsl(0 0% 98%);
+      --card: hsl(240 10% 3.9%);
+      --card-foreground: hsl(0 0% 98%);
+      --primary: hsl(0 0% 98%);
+      --primary-foreground: hsl(240 5.9% 10%);
+      --secondary: hsl(240 3.7% 15.9%);
+      --secondary-foreground: hsl(0 0% 98%);
+      --muted: hsl(240 3.7% 15.9%);
+      --muted-foreground: hsl(240 5% 64.9%);
+      --destructive: hsl(0 62.8% 30.6%);
+      --border: hsl(240 3.7% 15.9%);
+      --ring: hsl(240 4.9% 83.9%);
+      --radius: 6px;
+      color-scheme: dark;
+    }
+
+    /* =========================================================================
+       RESET & BASE
+       ========================================================================= */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      background: oklch(0.145 0 0);
-      color: oklch(0.985 0 0);
+      font-size: 14px;
+      line-height: 1.5;
+      background: var(--background);
+      color: var(--foreground);
+      min-height: 100vh;
     }
 
-    /* Modern scrollbar */
-    ::-webkit-scrollbar { inline-size: 8px; }
-    ::-webkit-scrollbar-thumb { background: oklch(0.3 0 0); border-radius: 4px; }
+    a { color: inherit; }
+    a:hover { color: var(--foreground); }
 
-    /* Range input */
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: hsl(240 3.7% 25%); border-radius: 4px; }
+
+    /* =========================================================================
+       LAYOUT
+       ========================================================================= */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      border-bottom: 1px solid var(--border);
+      background: hsl(240 10% 3.9% / 0.95);
+      backdrop-filter: blur(8px);
+    }
+
+    .header-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+    }
+
+    .main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 24px;
+    }
+
+    @media (min-width: 768px) {
+      .grid { grid-template-columns: 1fr 320px; }
+    }
+
+    .stack { display: flex; flex-direction: column; gap: 24px; }
+    .row { display: flex; gap: 16px; }
+    .row > * { flex: 1; }
+
+    /* =========================================================================
+       COMPONENTS: Card
+       ========================================================================= */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+    }
+
+    .card-sm { padding: 20px; }
+
+    .card-title {
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+
+    /* =========================================================================
+       COMPONENTS: Form Elements
+       ========================================================================= */
+    .label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .label-muted {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--muted-foreground);
+    }
+
+    .input, .select, .textarea {
+      width: 100%;
+      height: 40px;
+      padding: 0 12px;
+      font-size: 14px;
+      color: var(--foreground);
+      background: var(--secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .input:focus, .select:focus, .textarea:focus {
+      outline: none;
+      border-color: var(--ring);
+      box-shadow: 0 0 0 2px hsl(240 4.9% 83.9% / 0.2);
+    }
+
+    .input::placeholder { color: var(--muted-foreground); }
+
+    .textarea {
+      height: auto;
+      padding: 10px 12px;
+      resize: none;
+      font-family: inherit;
+    }
+
+    .select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+
+    .input-group {
+      position: relative;
+    }
+
+    .input-group .input { padding-right: 40px; }
+
+    .input-icon {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted-foreground);
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .input-icon:hover { color: var(--foreground); }
+
+    /* Range slider */
     input[type="range"] {
       -webkit-appearance: none;
-      block-size: 6px;
-      background: oklch(0.269 0 0);
-      border-radius: 3px;
+      width: 100%;
+      height: 8px;
+      background: var(--secondary);
+      border-radius: 4px;
+      cursor: pointer;
     }
+
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      inline-size: 16px;
-      block-size: 16px;
-      background: oklch(0.696 0.17 162);
+      width: 20px;
+      height: 20px;
+      background: var(--primary);
       border-radius: 50%;
-      cursor: pointer;
+      cursor: grab;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
       transition: transform 0.1s;
     }
-    input[type="range"]::-webkit-slider-thumb:hover {
-      transform: scale(1.15);
+
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+    input[type="range"]::-webkit-slider-thumb:active { cursor: grabbing; }
+
+    /* =========================================================================
+       COMPONENTS: Button
+       ========================================================================= */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 16px;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
     }
 
-    /* Pulse */
-    @keyframes pulse { 50% { opacity: 0.5; } }
-    .pulse { animation: pulse 2s ease-in-out infinite; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* Focus */
-    .focus-ring:focus { outline: 2px solid oklch(0.696 0.17 162); outline-offset: 2px; }
+    .btn-primary {
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+    .btn-primary:hover:not(:disabled) { background: hsl(0 0% 90%); }
+
+    .btn-secondary {
+      background: var(--secondary);
+      color: var(--secondary-foreground);
+    }
+    .btn-secondary:hover:not(:disabled) { background: hsl(240 3.7% 20%); }
+
+    .btn-destructive {
+      background: var(--destructive);
+      color: var(--foreground);
+    }
+    .btn-destructive:hover:not(:disabled) { background: hsl(0 62.8% 25%); }
+
+    .btn-lg { height: 48px; font-size: 16px; }
+    .btn-block { width: 100%; }
+
+    /* =========================================================================
+       COMPONENTS: Badge
+       ========================================================================= */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--secondary);
+      border-radius: 9999px;
+    }
+
+    /* Status dot */
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .dot-idle { background: var(--muted-foreground); }
+    .dot-live { background: hsl(142 76% 36%); animation: pulse 2s infinite; }
+    .dot-error { background: hsl(0 84% 60%); }
+    .dot-wait { background: hsl(48 96% 53%); animation: pulse 2s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* =========================================================================
+       COMPONENTS: Code
+       ========================================================================= */
+    .code {
+      flex: 1;
+      padding: 10px 12px;
+      font-family: ui-monospace, monospace;
+      font-size: 13px;
+      background: var(--secondary);
+      border-radius: var(--radius);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* =========================================================================
+       COMPONENTS: Details/Summary (Accordion)
+       ========================================================================= */
+    details { border-radius: 8px; }
+
+    details summary {
+      padding: 20px;
+      font-weight: 500;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+
+    details summary:hover { background: hsl(240 3.7% 15.9% / 0.5); }
+    details summary::-webkit-details-marker { display: none; }
+
+    details[open] summary .chevron { transform: rotate(180deg); }
+
+    details .content {
+      padding: 0 20px 20px;
+    }
+
+    .chevron {
+      color: var(--muted-foreground);
+      transition: transform 0.2s;
+    }
+
+    /* =========================================================================
+       COMPONENTS: Toast
+       ========================================================================= */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 16px;
+      font-size: 14px;
+      background: var(--secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    .toast.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* =========================================================================
+       CUSTOM: Position Picker
+       ========================================================================= */
+    .position-picker {
+      position: relative;
+      aspect-ratio: 16/9;
+      background: var(--secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: crosshair;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .position-handle {
+      position: absolute;
+      transform: translate(-50%, -50%);
+    }
+
+    .position-label {
+      background: var(--foreground);
+      color: var(--background);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    /* =========================================================================
+       CUSTOM: Preview
+       ========================================================================= */
+    .preview {
+      min-height: 100px;
+      padding: 16px;
+      background: hsl(240 3.7% 15.9% / 0.5);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--muted-foreground);
+    }
+
+    .preview.active { color: var(--foreground); }
+
+    .preview .error {
+      color: hsl(0 84% 60%);
+    }
+
+    .preview .error small {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    /* =========================================================================
+       CUSTOM: Restart Feedback Banner
+       ========================================================================= */
+    .feedback {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      margin-top: 12px;
+      font-size: 13px;
+      background: hsl(45 93% 47% / 0.15);
+      color: hsl(45 93% 58%);
+      border-radius: var(--radius);
+    }
+
+    .feedback.visible { display: flex; }
+
+    .feedback-btn {
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      background: hsl(45 93% 47%);
+      color: hsl(0 0% 0%);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .feedback-btn:hover { opacity: 0.9; }
+
+    /* =========================================================================
+       CUSTOM: Slider with Value
+       ========================================================================= */
+    .slider-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .slider-value {
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+    }
+
+    .slider-hint {
+      font-size: 12px;
+      color: var(--muted-foreground);
+      margin-top: 4px;
+    }
+
+    .slider-group { margin-bottom: 20px; }
+    .slider-group:last-child { margin-bottom: 0; }
+
+    /* =========================================================================
+       UTILITIES
+       ========================================================================= */
+    .hidden { display: none !important; }
+    .mt-4 { margin-top: 16px; }
+    .mt-6 { margin-top: 24px; }
+    .mb-4 { margin-bottom: 16px; }
+    .gap-8 { gap: 8px; }
+    .gap-12 { gap: 12px; }
+    .text-xs { font-size: 12px; }
+    .text-muted { color: var(--muted-foreground); }
+    .font-mono { font-family: ui-monospace, monospace; }
   </style>
 </head>
-<body class="min-h-screen flex flex-col">
-  <header class="border-b border-border px-6 py-4">
-    <div class="max-w-3xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg bg-primary grid place-items-center">
-          <svg class="w-5 h-5 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
-          </svg>
-        </div>
-        <span class="font-semibold">Transcription</span>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>
+        </svg>
+        <span>Live Transcription</span>
       </div>
-      <div id="status" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary text-sm">
-        <span id="dot" class="w-2 h-2 rounded-full bg-muted-foreground"></span>
+      <div class="badge">
+        <span id="dot" class="dot dot-idle"></span>
         <span id="status-text">Ready</span>
       </div>
     </div>
   </header>
 
-  <main class="flex-1 p-6">
-    <div class="max-w-3xl mx-auto space-y-5">
-      <!-- Config -->
-      <div class="grid gap-5 sm:grid-cols-2">
-        <div class="rounded-lg border border-border bg-card p-5 space-y-4 shadow-sm">
-          <h2 class="font-medium">Configuration</h2>
-          <div class="space-y-3">
-            <label class="block">
-              <span class="text-sm text-muted-foreground">API Key</span>
-              <div class="relative mt-1">
-                <input type="password" id="key" placeholder="Gladia API key"
-                  class="w-full h-9 px-3 pr-10 rounded-md bg-secondary border border-border text-sm focus-ring">
-                <button type="button" id="toggle-key" class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" title="Toggle visibility">
-                  <svg id="eye-open" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                  </svg>
-                  <svg id="eye-closed" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
-                  </svg>
-                </button>
-              </div>
-            </label>
-            <label class="block">
-              <span class="text-sm text-muted-foreground">Language</span>
-              <select id="lang" class="mt-1 w-full h-9 px-3 rounded-md bg-secondary border border-border text-sm focus-ring">
-                <option value="fr">Francais</option>
+  <!-- Main -->
+  <main class="main">
+    <div class="grid">
+      <!-- Left Column -->
+      <div class="stack">
+        <!-- Controls -->
+        <div class="card">
+          <div class="row">
+            <div>
+              <label class="label">Audio Source</label>
+              <select id="audio-source" class="select"><option>Loading...</option></select>
+            </div>
+            <div>
+              <label class="label">Language</label>
+              <select id="lang" class="select">
+                <option value="fr">French</option>
                 <option value="en">English</option>
-                <option value="es">Espanol</option>
-                <option value="de">Deutsch</option>
-                <option value="it">Italiano</option>
-                <option value="pt">Portugues</option>
+                <option value="es">Spanish</option>
+                <option value="de">German</option>
+                <option value="it">Italian</option>
+                <option value="pt">Portuguese</option>
                 <option value="ja">Japanese</option>
                 <option value="zh">Chinese</option>
                 <option value="ko">Korean</option>
                 <option value="ar">Arabic</option>
               </select>
-            </label>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="label">Translate to <span class="label-muted">(optional)</span></label>
+            <select id="translate-to" class="select">
+              <option value="">No translation</option>
+              <option value="en">English</option>
+              <option value="fr">French</option>
+              <option value="es">Spanish</option>
+              <option value="de">German</option>
+              <option value="it">Italian</option>
+              <option value="pt">Portuguese</option>
+              <option value="ja">Japanese</option>
+              <option value="zh">Chinese</option>
+              <option value="ko">Korean</option>
+              <option value="ar">Arabic</option>
+            </select>
+          </div>
+
+          <button id="btn" class="btn btn-primary btn-lg btn-block mt-6">
+            <svg id="icon-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="icon-stop" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="hidden"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+            <span id="btn-text">Start Transcription</span>
+          </button>
+
+          <div id="feedback" class="feedback">
+            <span id="feedback-text"></span>
+            <button id="restart-btn" class="feedback-btn">Restart now</button>
           </div>
         </div>
 
-        <div class="rounded-lg border border-border bg-card p-5 space-y-4 shadow-sm">
-          <h2 class="font-medium">Timing</h2>
-          <div class="space-y-4">
-            <label class="block">
-              <div class="flex justify-between text-sm mb-2">
-                <span class="text-muted-foreground">Silence detection</span>
-                <span id="silence-val" class="text-primary font-mono transition-all">0.05s</span>
-              </div>
-              <input type="range" id="silence" min="0.01" max="2" step="0.01" value="0.05" class="w-full">
-              <p id="silence-hint" class="text-xs text-muted-foreground mt-1 h-4"></p>
-            </label>
-            <label class="block">
-              <div class="flex justify-between text-sm mb-2">
-                <span class="text-muted-foreground">Max duration</span>
-                <span id="duration-val" class="text-primary font-mono transition-all">5s</span>
-              </div>
-              <input type="range" id="duration" min="5" max="60" step="1" value="5" class="w-full">
-              <p id="duration-hint" class="text-xs text-muted-foreground mt-1 h-4"></p>
-            </label>
+        <!-- Preview -->
+        <div class="card">
+          <div class="slider-header">
+            <span class="card-title" style="margin:0">Live Preview</span>
+            <span id="stats" class="text-xs font-mono">00:00</span>
           </div>
-          <div id="timing-feedback" class="hidden text-xs py-2 px-3 rounded-md bg-primary/20 text-primary flex items-center justify-between gap-3">
-            <span id="feedback-text"></span>
-            <button id="restart-btn" class="hidden px-3 py-1 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity whitespace-nowrap">
-              Restart now
+          <div id="preview" class="preview">Click "Start Transcription" to begin</div>
+        </div>
+
+        <!-- OBS Setup -->
+        <div class="card">
+          <div class="card-title">OBS Browser Source</div>
+          <div class="stack gap-12">
+            <div>
+              <label class="label-muted mb-4">This computer</label>
+              <div class="row gap-8">
+                <code class="code">http://localhost:${PORT}/overlay</code>
+                <button id="copy-local" class="btn btn-secondary">Copy</button>
+              </div>
+            </div>
+            <div>
+              <label class="label-muted mb-4">Network <span class="text-muted">(same WiFi)</span></label>
+              <div class="row gap-8">
+                <code id="network-url" class="code">Detecting...</code>
+                <button id="copy-network" class="btn btn-secondary">Copy</button>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-muted mt-4">Set resolution to 1920×1080. <a href="http://localhost:${PORT}/overlay?bg" target="_blank">Preview overlay</a></p>
+        </div>
+      </div>
+
+      <!-- Right Column -->
+      <div class="stack">
+        <!-- API Key -->
+        <div class="card card-sm">
+          <label class="label">API Key</label>
+          <div class="input-group">
+            <input type="password" id="key" placeholder="Enter Gladia API key" class="input">
+            <button type="button" id="toggle-key" class="input-icon">
+              <svg id="eye-open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg id="eye-closed" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden">
+                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>
+              </svg>
             </button>
           </div>
+          <p class="text-xs text-muted mt-4">Get your key at <a href="https://gladia.io" target="_blank">gladia.io</a></p>
         </div>
-      </div>
 
-      <!-- Start -->
-      <button id="btn" class="w-full h-12 rounded-lg bg-primary text-primary-foreground font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg hover:shadow-xl focus-ring">
-        <svg id="icon-play" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        <svg id="icon-stop" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
-        <span id="btn-text">Start</span>
-      </button>
+        <!-- Display -->
+        <div class="card card-sm">
+          <div class="card-title">Display</div>
 
-      <!-- Preview -->
-      <div class="rounded-lg border border-border bg-card p-5 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="font-medium">Preview</h2>
-          <span id="stats" class="text-xs text-muted-foreground font-mono">00:00 | 0</span>
-        </div>
-        <div id="preview" class="min-h-24 p-4 rounded-md bg-secondary text-muted-foreground text-center grid place-items-center text-lg leading-relaxed transition-colors">
-          Waiting...
-        </div>
-      </div>
-
-      <!-- Display Settings -->
-      <div class="rounded-lg border border-border bg-card p-5 shadow-sm">
-        <h2 class="font-medium mb-4">Display Settings</h2>
-        <div class="space-y-4">
-          <label class="block">
-            <div class="flex justify-between text-sm mb-2">
-              <span class="text-muted-foreground">Text Size</span>
-              <span id="font-size-val" class="text-primary font-mono">52px</span>
+          <label class="label-muted mb-4">Position</label>
+          <div id="position-picker" class="position-picker">
+            <div id="pos-handle" class="position-handle" style="left:50%;top:85%">
+              <div class="position-label">Subtitle</div>
             </div>
-            <input type="range" id="font-size" min="24" max="80" step="2" value="52" class="w-full">
-          </label>
-          <div class="grid grid-cols-2 gap-3">
-            <label class="block">
-              <span class="text-sm text-muted-foreground">Alignment</span>
-              <select id="text-align" class="mt-1 w-full h-9 px-3 rounded-md bg-secondary border border-border text-sm focus-ring">
-                <option value="center">Center</option>
-                <option value="left">Left</option>
-                <option value="right">Right</option>
-              </select>
-            </label>
-            <label class="block">
-              <span class="text-sm text-muted-foreground">Background</span>
-              <select id="bg-style" class="mt-1 w-full h-9 px-3 rounded-md bg-secondary border border-border text-sm focus-ring">
-                <option value="none">None (Netflix style)</option>
-                <option value="box">Black box</option>
-              </select>
-            </label>
           </div>
-        </div>
-      </div>
 
-      <!-- Custom Vocabulary -->
-      <div class="rounded-lg border border-border bg-card p-5 shadow-sm">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="font-medium">Custom Vocabulary</h2>
-          <span class="text-xs text-muted-foreground">Optional</span>
-        </div>
-        <p class="text-xs text-muted-foreground mb-3">Add words to improve spelling accuracy (names, brands, technical terms). Separate with commas.</p>
-        <textarea id="vocab" rows="2" placeholder="e.g. Gladia, OBS Studio, VMix, YouTube"
-          class="w-full px-3 py-2 rounded-md bg-secondary border border-border text-sm focus-ring resize-none"></textarea>
-      </div>
+          <div class="slider-header">
+            <label class="label-muted">Size</label>
+            <span id="font-size-val" class="slider-value">52px</span>
+          </div>
+          <input type="range" id="font-size" min="24" max="80" step="2" value="52">
 
-      <!-- OBS -->
-      <div class="rounded-lg border border-border bg-card p-5 shadow-sm">
-        <h2 class="font-medium mb-3">OBS Browser Source</h2>
-        <div class="flex gap-2">
-          <a href="http://localhost:${PORT}/overlay?bg" target="_blank" id="overlay-link"
-            class="flex-1 p-3 rounded-md bg-secondary text-sm font-mono truncate hover:bg-muted transition-colors cursor-pointer"
-            title="Click to preview overlay">http://localhost:${PORT}/overlay</a>
-          <button id="copy" class="px-4 rounded-md bg-secondary hover:bg-muted transition-colors text-sm focus-ring">Copy</button>
+          <div class="mt-4">
+            <label class="label-muted mb-4">Style</label>
+            <select id="bg-style" class="select">
+              <option value="none">Outline (Netflix style)</option>
+              <option value="box">Background box</option>
+            </select>
+          </div>
+
+          <input type="hidden" id="pos-x" value="50">
+          <input type="hidden" id="pos-y" value="85">
         </div>
-        <p class="text-xs text-muted-foreground mt-2">Resolution: 1920x1080 · Click link to preview</p>
+
+        <!-- Advanced -->
+        <details class="card" style="padding:0">
+          <summary>
+            Advanced
+            <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </summary>
+          <div class="content">
+            <div class="slider-group">
+              <div class="slider-header">
+                <label class="label-muted">Response speed</label>
+                <span id="silence-val" class="slider-value">0.05s</span>
+              </div>
+              <input type="range" id="silence" min="0.01" max="2" step="0.01" value="0.05">
+              <p id="silence-hint" class="slider-hint">Very fast</p>
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-header">
+                <label class="label-muted">Max segment</label>
+                <span id="duration-val" class="slider-value">5s</span>
+              </div>
+              <input type="range" id="duration" min="5" max="60" step="1" value="5">
+              <p id="duration-hint" class="slider-hint">Short</p>
+            </div>
+
+            <div>
+              <label class="label-muted mb-4">Custom vocabulary</label>
+              <textarea id="vocab" rows="2" placeholder="Names, brands, technical terms..." class="textarea"></textarea>
+              <p class="slider-hint">Separate words with commas</p>
+            </div>
+          </div>
+        </details>
       </div>
     </div>
   </main>
 
+  <!-- Toast -->
+  <div id="toast" class="toast"><span id="toast-text"></span></div>
+
   <script type="module">
-    // Elements
-    const $ = (s) => document.getElementById(s);
-    const key = $('key'), lang = $('lang'), silence = $('silence'), duration = $('duration');
-    const silenceVal = $('silence-val'), durationVal = $('duration-val');
-    const silenceHint = $('silence-hint'), durationHint = $('duration-hint');
-    const timingFeedback = $('timing-feedback'), feedbackText = $('feedback-text'), restartBtn = $('restart-btn');
-    const btn = $('btn'), iconPlay = $('icon-play'), iconStop = $('icon-stop'), btnText = $('btn-text');
-    const dot = $('dot'), statusText = $('status-text'), preview = $('preview'), stats = $('stats');
-    const vocab = $('vocab'), fontSize = $('font-size'), fontSizeVal = $('font-size-val');
-    const textAlign = $('text-align'), bgStyle = $('bg-style');
+    // =========================================================================
+    // DOM
+    // =========================================================================
+    const $ = id => document.getElementById(id);
 
-    // State
-    let running = false, ws = null, ctx = null, stream = null, worklet = null;
-    let start = null, timer = null, count = 0;
-    let feedbackTimeout = null;
+    const el = {
+      key: $('key'),
+      audioSource: $('audio-source'),
+      lang: $('lang'),
+      translateTo: $('translate-to'),
+      silence: $('silence'),
+      duration: $('duration'),
+      vocab: $('vocab'),
+      fontSize: $('font-size'),
+      bgStyle: $('bg-style'),
+      posX: $('pos-x'),
+      posY: $('pos-y'),
+      silenceVal: $('silence-val'),
+      durationVal: $('duration-val'),
+      silenceHint: $('silence-hint'),
+      durationHint: $('duration-hint'),
+      fontSizeVal: $('font-size-val'),
+      btn: $('btn'),
+      iconPlay: $('icon-play'),
+      iconStop: $('icon-stop'),
+      btnText: $('btn-text'),
+      dot: $('dot'),
+      statusText: $('status-text'),
+      preview: $('preview'),
+      stats: $('stats'),
+      toast: $('toast'),
+      toastText: $('toast-text'),
+      picker: $('position-picker'),
+      handle: $('pos-handle'),
+      networkUrl: $('network-url'),
+      feedback: $('feedback'),
+      feedbackText: $('feedback-text'),
+      restartBtn: $('restart-btn'),
+    };
 
-    // Config persistence
-    const load = () => { try { return JSON.parse(localStorage.getItem('t') || '{}'); } catch { return {}; } };
-    const save = () => localStorage.setItem('t', JSON.stringify({
-      k: key.value, l: lang.value, s: silence.value, d: duration.value,
-      vocab: vocab.value, fontSize: fontSize.value, textAlign: textAlign.value, bgStyle: bgStyle.value
-    }));
+    // =========================================================================
+    // STATE
+    // =========================================================================
+    const state = {
+      running: false,
+      dragging: false,
+      ws: null,
+      ctx: null,
+      stream: null,
+      worklet: null,
+      startTime: null,
+      timer: null,
+    };
 
-    // Feedback helper
-    const showFeedback = (msg, showRestart = false) => {
-      feedbackText.textContent = msg;
-      timingFeedback.classList.remove('hidden');
-      if (showRestart) {
-        timingFeedback.classList.add('bg-yellow-500/20', 'text-yellow-400');
-        timingFeedback.classList.remove('bg-primary/20', 'text-primary');
-        restartBtn.classList.remove('hidden');
-        clearTimeout(feedbackTimeout);
-        // Keep visible while running and settings changed
-      } else {
-        timingFeedback.classList.remove('bg-yellow-500/20', 'text-yellow-400');
-        timingFeedback.classList.add('bg-primary/20', 'text-primary');
-        restartBtn.classList.add('hidden');
-        clearTimeout(feedbackTimeout);
-        feedbackTimeout = setTimeout(() => timingFeedback.classList.add('hidden'), 2500);
-      }
+    // =========================================================================
+    // UI
+    // =========================================================================
+    const toast = msg => {
+      el.toastText.textContent = msg;
+      el.toast.classList.add('visible');
+      setTimeout(() => el.toast.classList.remove('visible'), 2000);
+    };
+
+    const showFeedback = msg => {
+      el.feedbackText.textContent = msg;
+      el.feedback.classList.add('visible');
     };
 
     const hideFeedback = () => {
-      timingFeedback.classList.add('hidden');
-      restartBtn.classList.add('hidden');
+      el.feedback.classList.remove('visible');
     };
 
-    const getSilenceDescription = (val) => {
-      if (val <= 0.1) return 'Very fast response';
-      if (val <= 0.3) return 'Fast response';
-      if (val <= 0.5) return 'Balanced';
-      if (val <= 1) return 'Natural pauses';
-      return 'Long pauses allowed';
+    const setStatus = (text, type) => {
+      el.statusText.textContent = text;
+      el.dot.className = 'dot dot-' + (type || 'idle');
     };
 
-    const getDurationDescription = (val) => {
-      if (val <= 10) return 'Short segments';
-      if (val <= 20) return 'Medium segments';
-      if (val <= 40) return 'Long segments';
-      return 'Very long segments';
-    };
-
-    const cfg = load();
-    if (cfg.k) key.value = cfg.k;
-    if (cfg.l) lang.value = cfg.l;
-    if (cfg.s) { silence.value = cfg.s; silenceVal.textContent = cfg.s + 's'; silenceHint.textContent = getSilenceDescription(+cfg.s); }
-    if (cfg.d) { duration.value = cfg.d; durationVal.textContent = cfg.d + 's'; durationHint.textContent = getDurationDescription(+cfg.d); }
-    if (cfg.vocab) vocab.value = cfg.vocab;
-    if (cfg.fontSize) { fontSize.value = cfg.fontSize; fontSizeVal.textContent = cfg.fontSize + 'px'; }
-    if (cfg.textAlign) textAlign.value = cfg.textAlign;
-    if (cfg.bgStyle) bgStyle.value = cfg.bgStyle;
-
-    // Slider handlers with feedback
-    silence.oninput = () => {
-      const val = silence.value;
-      silenceVal.textContent = val + 's';
-      silenceHint.textContent = getSilenceDescription(+val);
-      silenceVal.classList.add('scale-110');
-      setTimeout(() => silenceVal.classList.remove('scale-110'), 150);
-      save();
-      if (running) {
-        showFeedback('Silence detection: ' + val + 's - Will apply on next session', true);
-      } else {
-        showFeedback('Silence detection set to ' + val + 's');
-      }
-    };
-
-    duration.oninput = () => {
-      const val = duration.value;
-      durationVal.textContent = val + 's';
-      durationHint.textContent = getDurationDescription(+val);
-      durationVal.classList.add('scale-110');
-      setTimeout(() => durationVal.classList.remove('scale-110'), 150);
-      save();
-      if (running) {
-        showFeedback('Max duration: ' + val + 's - Will apply on next session', true);
-      } else {
-        showFeedback('Max duration set to ' + val + 's');
-      }
-    };
-
-    lang.onchange = () => {
-      save();
-      const langName = lang.options[lang.selectedIndex].text;
-      if (running) {
-        showFeedback('Language: ' + langName + ' - Restart to apply', true);
-      } else {
-        showFeedback('Language set to ' + langName);
-      }
-    };
-    key.onchange = save;
-
-    // Display settings handlers
-    fontSize.oninput = () => {
-      const val = fontSize.value;
-      fontSizeVal.textContent = val + 'px';
-      fontSizeVal.classList.add('scale-110');
-      setTimeout(() => fontSizeVal.classList.remove('scale-110'), 150);
-      save();
-      updateOverlayStyles();
-    };
-
-    textAlign.onchange = () => {
-      save();
-      updateOverlayStyles();
-    };
-
-    bgStyle.onchange = () => {
-      save();
-      updateOverlayStyles();
-    };
-
-    vocab.onchange = () => {
-      save();
-      if (running) {
-        showFeedback('Vocabulary updated - Restart to apply', true);
-      }
-    };
-
-    // Update overlay styles via broadcast
-    const updateOverlayStyles = () => {
-      fetch('/style', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fontSize: fontSize.value,
-          textAlign: textAlign.value,
-          bgStyle: bgStyle.value
-        })
-      });
-    };
-
-    // Status & Error display
-    const setStatus = (t, type) => {
-      statusText.textContent = t;
-      dot.className = 'w-2 h-2 rounded-full ' +
-        (type === 'live' ? 'bg-green-500 pulse' :
-         type === 'error' ? 'bg-red-500' :
-         type === 'wait' ? 'bg-yellow-500 pulse' : 'bg-muted-foreground');
-    };
-
-    const showError = (msg, details = '') => {
+    const showError = (title, detail) => {
       setStatus('Error', 'error');
-      preview.innerHTML = '<div class="text-red-400 text-sm"><strong>' + msg + '</strong>' +
-        (details ? '<br><span class="text-red-400/70 text-xs">' + details + '</span>' : '') + '</div>';
-      preview.classList.remove('text-muted-foreground');
-      console.error('[Transcription]', msg, details);
+      el.preview.innerHTML = '<div class="error"><strong>' + title + '</strong>' +
+        (detail ? '<small>' + detail + '</small>' : '') + '</div>';
     };
 
-    // Error parser for API responses
-    const parseApiError = (status, body) => {
-      if (status === 401) return ['Invalid API key', 'Check your Gladia API key'];
-      if (status === 402) return ['Payment required', 'Check your Gladia account credits'];
-      if (status === 429) return ['Rate limited', 'Too many requests, wait a moment'];
-      if (status >= 500) return ['Gladia server error', 'Try again in a few seconds'];
+    const updateTimer = () => {
+      if (!state.startTime) return;
+      const s = Math.floor((Date.now() - state.startTime) / 1000);
+      el.stats.textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+    };
+
+    // =========================================================================
+    // CONFIG
+    // =========================================================================
+    const load = () => { try { return JSON.parse(localStorage.getItem('t') || '{}'); } catch { return {}; } };
+    const save = () => localStorage.setItem('t', JSON.stringify({
+      k: el.key.value, s: el.audioSource.value, l: el.lang.value, t: el.translateTo.value,
+      si: el.silence.value, d: el.duration.value, v: el.vocab.value,
+      fs: el.fontSize.value, px: el.posX.value, py: el.posY.value, bg: el.bgStyle.value
+    }));
+
+    const restore = c => {
+      if (c.k) el.key.value = c.k;
+      if (c.l) el.lang.value = c.l;
+      if (c.t) el.translateTo.value = c.t;
+      if (c.si) { el.silence.value = c.si; el.silenceVal.textContent = c.si + 's'; }
+      if (c.d) { el.duration.value = c.d; el.durationVal.textContent = c.d + 's'; }
+      if (c.v) el.vocab.value = c.v;
+      if (c.fs) { el.fontSize.value = c.fs; el.fontSizeVal.textContent = c.fs + 'px'; }
+      if (c.px) el.posX.value = c.px;
+      if (c.py) el.posY.value = c.py;
+      if (c.bg) el.bgStyle.value = c.bg;
+    };
+
+    // =========================================================================
+    // AUDIO DEVICES
+    // =========================================================================
+    const loadDevices = async () => {
       try {
-        const json = JSON.parse(body);
-        return [json.message || json.error || 'API error', json.detail || ''];
-      } catch {
-        return ['API error (' + status + ')', body.slice(0, 100)];
-      }
+        const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+        s.getTracks().forEach(t => t.stop());
+        const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+        el.audioSource.innerHTML = devs.map((d,i) => '<option value="'+d.deviceId+'">'+(d.label||'Mic '+(i+1))+'</option>').join('');
+        const c = load();
+        if (c.s && devs.some(d => d.deviceId === c.s)) el.audioSource.value = c.s;
+      } catch { el.audioSource.innerHTML = '<option value="">Default</option>'; }
     };
 
-    // Timer
-    const updateStats = () => {
-      if (!start) return;
-      const s = Math.floor((Date.now() - start) / 1000);
-      stats.textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0') + ' | ' + count;
+    // =========================================================================
+    // DESCRIPTIONS
+    // =========================================================================
+    const silenceDesc = v => v <= 0.1 ? 'Very fast' : v <= 0.3 ? 'Fast' : v <= 0.5 ? 'Balanced' : v <= 1 ? 'Natural' : 'Slow';
+    const durationDesc = v => v <= 10 ? 'Short' : v <= 20 ? 'Medium' : v <= 40 ? 'Long' : 'Very long';
+
+    // =========================================================================
+    // POSITION PICKER
+    // =========================================================================
+    const updateHandle = () => {
+      el.handle.style.left = el.posX.value + '%';
+      el.handle.style.top = el.posY.value + '%';
     };
 
-    // AudioWorklet setup
+    const setPos = e => {
+      const r = el.picker.getBoundingClientRect();
+      const x = e.touches ? e.touches[0].clientX : e.clientX;
+      const y = e.touches ? e.touches[0].clientY : e.clientY;
+      el.posX.value = Math.max(5, Math.min(95, ((x - r.left) / r.width) * 100)).toFixed(1);
+      el.posY.value = Math.max(5, Math.min(95, ((y - r.top) / r.height) * 100)).toFixed(1);
+      updateHandle();
+    };
+
+    // =========================================================================
+    // OVERLAY
+    // =========================================================================
+    const sendStyle = () => fetch('/style', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fontSize: el.fontSize.value, posX: el.posX.value, posY: el.posY.value, bgStyle: el.bgStyle.value })
+    });
+
+    const broadcast = text => fetch('/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+
+    // =========================================================================
+    // AUDIO
+    // =========================================================================
     const setupAudio = async () => {
-      // Check browser support
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error('MEDIA_NOT_SUPPORTED');
-      }
-      if (!window.AudioWorklet) {
-        throw new Error('WORKLET_NOT_SUPPORTED');
-      }
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error('MEDIA_NOT_SUPPORTED');
+      state.ctx = new AudioContext();
+      const c = { channelCount: 1, echoCancellation: true, noiseSuppression: true };
+      if (el.audioSource.value) c.deviceId = { exact: el.audioSource.value };
 
-      // Create AudioContext first with default sample rate (avoids Firefox mismatch errors)
-      // See: https://bugzilla.mozilla.org/show_bug.cgi?id=1725336
-      ctx = new AudioContext();
-
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
-        });
-      } catch (e) {
+      try { state.stream = await navigator.mediaDevices.getUserMedia({ audio: c }); }
+      catch (e) {
         if (e.name === 'NotAllowedError') throw new Error('MIC_DENIED');
         if (e.name === 'NotFoundError') throw new Error('MIC_NOT_FOUND');
-        throw new Error('MIC_ERROR:' + e.message);
+        throw new Error('MIC_ERROR');
       }
 
-      // Register worklet from inline code
       const blob = new Blob([${JSON.stringify(AUDIO_PROCESSOR)}], { type: 'application/javascript' });
       const url = URL.createObjectURL(blob);
-      await ctx.audioWorklet.addModule(url);
+      await state.ctx.audioWorklet.addModule(url);
       URL.revokeObjectURL(url);
 
-      worklet = new AudioWorkletNode(ctx, 'pcm-processor');
-      worklet.port.onmessage = (e) => {
-        if (ws?.readyState === 1) ws.send(new Uint8Array(e.data));
-      };
-
-      const source = ctx.createMediaStreamSource(stream);
-      source.connect(worklet);
+      state.worklet = new AudioWorkletNode(state.ctx, 'pcm-processor');
+      state.worklet.port.onmessage = e => { if (state.ws?.readyState === 1) state.ws.send(new Uint8Array(e.data)); };
+      state.ctx.createMediaStreamSource(state.stream).connect(state.worklet);
     };
 
-    // Session
-    const startSession = async () => {
-      const apiKey = key.value.trim();
-      if (!apiKey) {
-        showError('API key required', 'Enter your Gladia API key');
-        return;
-      }
-      if (apiKey.length < 10) {
-        showError('Invalid API key format', 'Key seems too short');
-        return;
-      }
+    // =========================================================================
+    // SESSION
+    // =========================================================================
+    const start = async () => {
+      const key = el.key.value.trim();
+      if (!key) { showError('API key required'); return; }
 
       save();
       setStatus('Connecting...', 'wait');
-      preview.textContent = 'Connecting to Gladia...';
-      preview.classList.add('text-muted-foreground');
-      btn.disabled = true;
+      el.preview.textContent = 'Connecting...';
+      el.btn.disabled = true;
 
       try {
-        // API call
-        let res;
-        try {
-          // Build request body
-          const reqBody = {
-            encoding: 'wav/pcm', sample_rate: 16000, bit_depth: 16, channels: 1,
-            endpointing: +silence.value,
-            maximum_duration_without_endpointing: +duration.value,
-            language_config: { languages: [lang.value] }
-          };
+        const body = {
+          encoding: 'wav/pcm', sample_rate: 16000, bit_depth: 16, channels: 1,
+          endpointing: +el.silence.value,
+          maximum_duration_without_endpointing: +el.duration.value,
+          language_config: { languages: [el.lang.value] }
+        };
 
-          // Add custom vocabulary if provided
-          const vocabWords = vocab.value.split(/[,;]+/).map(w => w.trim()).filter(w => w.length > 0);
-          if (vocabWords.length > 0) {
-            reqBody.realtime_processing = {
-              custom_vocabulary: true,
-              custom_vocabulary_config: {
-                vocabulary: vocabWords
-              }
-            };
-          }
+        const words = el.vocab.value.split(/[,;]+/).map(w => w.trim()).filter(w => w);
+        if (words.length) body.realtime_processing = { custom_vocabulary: true, custom_vocabulary_config: { vocabulary: words } };
 
-          res = await fetch('https://api.gladia.io/v2/live', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-gladia-key': apiKey },
-            body: JSON.stringify(reqBody)
-          });
-        } catch (e) {
-          throw new Error('NETWORK:' + e.message);
+        if (el.translateTo.value) {
+          body.realtime_processing = body.realtime_processing || {};
+          body.realtime_processing.translation = true;
+          body.realtime_processing.translation_config = { target_languages: [el.translateTo.value], model: 'enhanced' };
         }
 
+        const res = await fetch('https://api.gladia.io/v2/live', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-gladia-key': key },
+          body: JSON.stringify(body)
+        });
+
         if (!res.ok) {
-          const body = await res.text();
-          const [msg, detail] = parseApiError(res.status, body);
-          throw new Error('API:' + msg + ':' + detail);
+          if (res.status === 401) throw new Error('Invalid API key');
+          if (res.status === 402) throw new Error('Insufficient credits');
+          throw new Error('API error: ' + res.status);
         }
 
         const { url } = await res.json();
-        if (!url) throw new Error('API:Invalid response:No WebSocket URL received');
+        state.ws = new WebSocket(url);
 
-        ws = new WebSocket(url);
-
-        ws.onopen = async () => {
+        state.ws.onopen = async () => {
           try {
-            preview.textContent = 'Setting up microphone...';
+            el.preview.textContent = 'Initializing...';
             await setupAudio();
-
-            running = true;
-            start = Date.now();
-            count = 0;
-            timer = setInterval(updateStats, 1000);
-
-            btn.disabled = false;
-            btn.classList.replace('bg-primary', 'bg-destructive');
-            iconPlay.classList.add('hidden');
-            iconStop.classList.remove('hidden');
-            btnText.textContent = 'Stop';
-            preview.textContent = 'Listening...';
-            preview.classList.remove('text-muted-foreground');
+            state.running = true;
+            state.startTime = Date.now();
+            state.timer = setInterval(updateTimer, 1000);
+            el.btn.disabled = false;
+            el.btn.className = 'btn btn-destructive btn-lg btn-block mt-6';
+            el.iconPlay.classList.add('hidden');
+            el.iconStop.classList.remove('hidden');
+            el.btnText.textContent = 'Stop';
+            el.preview.textContent = 'Listening...';
+            el.preview.classList.add('active');
             setStatus('Live', 'live');
           } catch (e) {
-            const code = e.message;
-            if (code === 'MIC_DENIED') showError('Microphone access denied', 'Allow microphone in browser settings');
-            else if (code === 'MIC_NOT_FOUND') showError('No microphone found', 'Connect a microphone and try again');
-            else if (code === 'MEDIA_NOT_SUPPORTED') showError('Browser not supported', 'Use Chrome, Firefox, or Edge');
-            else if (code === 'WORKLET_NOT_SUPPORTED') showError('AudioWorklet not supported', 'Update your browser');
-            else if (code.startsWith('MIC_ERROR:')) showError('Microphone error', code.slice(10));
-            else showError('Audio setup failed', e.message);
-            stopSession();
+            const errs = { MIC_DENIED: ['Microphone blocked', 'Allow in browser settings'], MIC_NOT_FOUND: ['No microphone', 'Connect one'] };
+            const [t, d] = errs[e.message] || ['Audio error', e.message];
+            showError(t, d);
+            stop();
           }
         };
 
-        ws.onmessage = (e) => {
+        state.ws.onmessage = e => {
           try {
-            const msg = JSON.parse(e.data);
-            if (msg.type === 'transcript' && msg.data?.utterance?.text) {
-              const text = msg.data.utterance.text.trim();
-              if (text) {
-                preview.textContent = text;
-                preview.classList.remove('text-muted-foreground');
-                preview.classList.add('text-foreground');
-                if (msg.data.is_final) {
-                  count++;
-                  fetch('/broadcast', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text })
-                  });
-                }
-              }
-            } else if (msg.type === 'error') {
-              showError('Gladia error', msg.data?.message || 'Unknown error');
-              stopSession();
-            }
+            const m = JSON.parse(e.data);
+            let t = null;
+            if (m.type === 'translation' && m.data?.translated_utterance?.text) t = m.data.translated_utterance.text.trim();
+            else if (m.type === 'transcript' && m.data?.utterance?.text && m.data.is_final && !el.translateTo.value) t = m.data.utterance.text.trim();
+            if (t) { el.preview.textContent = t; broadcast(t); }
           } catch {}
         };
 
-        ws.onerror = (e) => {
-          showError('WebSocket error', 'Connection to Gladia failed');
-          stopSession();
-        };
+        state.ws.onerror = () => { showError('Connection failed'); stop(); };
+        state.ws.onclose = e => { if (state.running && e.code !== 1000) showError('Disconnected', 'Code: ' + e.code); stop(); };
 
-        ws.onclose = (e) => {
-          if (running) {
-            if (e.code === 1006) showError('Connection lost', 'Network issue or server closed connection');
-            else if (e.code === 1008) showError('Policy violation', e.reason || 'Check API key');
-            else if (e.code !== 1000) showError('Disconnected', 'Code: ' + e.code + (e.reason ? ' - ' + e.reason : ''));
-            else setStatus('Stopped', '');
-            stopSession();
-          }
-        };
-
-      } catch (e) {
-        btn.disabled = false;
-        const msg = e.message;
-        if (msg.startsWith('NETWORK:')) {
-          showError('Network error', 'Check your internet connection');
-        } else if (msg.startsWith('API:')) {
-          const parts = msg.slice(4).split(':');
-          showError(parts[0], parts[1] || '');
-        } else {
-          showError('Connection failed', msg);
-        }
-        stopSession();
-      }
+      } catch (e) { el.btn.disabled = false; showError(e.message); }
     };
 
-    const stopSession = () => {
-      worklet?.disconnect();
-      ctx?.close().catch(() => {});
-      stream?.getTracks().forEach(t => t.stop());
-      ws?.close();
-      ws = ctx = stream = worklet = null;
-      running = false;
-      clearInterval(timer);
+    const stop = () => {
+      state.worklet?.disconnect();
+      state.ctx?.close().catch(() => {});
+      state.stream?.getTracks().forEach(t => t.stop());
+      state.ws?.close();
+      state.ws = state.ctx = state.stream = state.worklet = null;
+      state.running = false;
+      clearInterval(state.timer);
+
+      el.btn.disabled = false;
+      el.btn.className = 'btn btn-primary btn-lg btn-block mt-6';
+      el.iconPlay.classList.remove('hidden');
+      el.iconStop.classList.add('hidden');
+      el.btnText.textContent = 'Start Transcription';
       hideFeedback();
 
-      btn.disabled = false;
-      btn.classList.replace('bg-destructive', 'bg-primary');
-      iconPlay.classList.remove('hidden');
-      iconStop.classList.add('hidden');
-      btnText.textContent = 'Start';
-
-      // Only reset preview if no error is shown
-      if (!preview.querySelector('.text-red-400')) {
-        preview.textContent = 'Waiting...';
-        preview.classList.remove('text-foreground');
-        preview.classList.add('text-muted-foreground');
+      if (!el.preview.querySelector('.error')) {
+        el.preview.textContent = 'Click "Start Transcription" to begin';
+        el.preview.classList.remove('active');
       }
-      if (statusText.textContent === 'Live') setStatus('Ready', '');
+      if (el.statusText.textContent === 'Live') setStatus('Ready', 'idle');
     };
 
-    btn.onclick = () => running ? stopSession() : startSession();
+    // =========================================================================
+    // IP DETECTION
+    // =========================================================================
+    const detectIP = () => {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      pc.createDataChannel('');
+      pc.createOffer().then(o => pc.setLocalDescription(o));
+      pc.onicecandidate = e => {
+        if (!e.candidate) return;
+        const m = e.candidate.candidate.match(/([0-9]{1,3}(\\.[0-9]{1,3}){3})/);
+        if (m && m[1] && !m[1].startsWith('127.')) { el.networkUrl.textContent = 'http://' + m[1] + ':${PORT}/overlay'; pc.close(); }
+      };
+      setTimeout(() => { if (el.networkUrl.textContent.includes('Detecting')) el.networkUrl.textContent = 'Unavailable'; pc.close(); }, 3000);
+    };
 
-    // Restart function for settings changes
-    const restartSession = async () => {
+    // =========================================================================
+    // RESTART
+    // =========================================================================
+    const restart = async () => {
       hideFeedback();
       setStatus('Restarting...', 'wait');
-      preview.textContent = 'Restarting with new settings...';
-      stopSession();
+      el.preview.textContent = 'Restarting with new settings...';
+      stop();
       await new Promise(r => setTimeout(r, 300));
-      startSession();
+      start();
     };
 
-    restartBtn.onclick = restartSession;
-
-    // Copy button
-    $('copy').onclick = () => {
-      navigator.clipboard.writeText('http://localhost:${PORT}/overlay');
-      $('copy').textContent = 'Copied!';
-      setTimeout(() => $('copy').textContent = 'Copy', 1500);
+    // =========================================================================
+    // EVENTS
+    // =========================================================================
+    // Settings that require restart to take effect
+    el.silence.oninput = () => {
+      el.silenceVal.textContent = el.silence.value + 's';
+      el.silenceHint.textContent = silenceDesc(+el.silence.value);
+      save();
+      if (state.running) showFeedback('Response speed changed — Restart to apply');
+    };
+    el.duration.oninput = () => {
+      el.durationVal.textContent = el.duration.value + 's';
+      el.durationHint.textContent = durationDesc(+el.duration.value);
+      save();
+      if (state.running) showFeedback('Max segment changed — Restart to apply');
+    };
+    el.lang.onchange = () => {
+      save();
+      if (state.running) showFeedback('Language changed — Restart to apply');
+    };
+    el.translateTo.onchange = () => {
+      save();
+      if (state.running) showFeedback('Translation changed — Restart to apply');
+    };
+    el.audioSource.onchange = () => {
+      save();
+      if (state.running) showFeedback('Audio source changed — Restart to apply');
+    };
+    el.vocab.onchange = () => {
+      save();
+      if (state.running) showFeedback('Vocabulary changed — Restart to apply');
     };
 
-    // API key visibility toggle
-    const eyeOpen = $('eye-open'), eyeClosed = $('eye-closed');
+    // Settings that apply immediately (no restart needed)
+    el.fontSize.oninput = () => { el.fontSizeVal.textContent = el.fontSize.value + 'px'; save(); sendStyle(); };
+    el.bgStyle.onchange = () => { save(); sendStyle(); };
+    el.key.onchange = save;
+
+    el.picker.onmousedown = el.picker.ontouchstart = e => { state.dragging = true; setPos(e); };
+    document.onmousemove = e => { if (state.dragging) setPos(e); };
+    document.ontouchmove = e => { if (state.dragging) { e.preventDefault(); setPos(e); } };
+    document.onmouseup = document.ontouchend = () => { if (state.dragging) { state.dragging = false; save(); sendStyle(); } };
+
+    el.btn.onclick = () => state.running ? stop() : start();
+    el.restartBtn.onclick = restart;
+
+    $('copy-local').onclick = () => { navigator.clipboard.writeText('http://localhost:${PORT}/overlay'); toast('Copied!'); };
+    $('copy-network').onclick = () => { if (!el.networkUrl.textContent.includes('Detecting')) { navigator.clipboard.writeText(el.networkUrl.textContent); toast('Copied!'); } };
+
     $('toggle-key').onclick = () => {
-      const isPassword = key.type === 'password';
-      key.type = isPassword ? 'text' : 'password';
-      eyeOpen.classList.toggle('hidden', isPassword);
-      eyeClosed.classList.toggle('hidden', !isPassword);
+      const show = el.key.type === 'password';
+      el.key.type = show ? 'text' : 'password';
+      $('eye-open').classList.toggle('hidden', show);
+      $('eye-closed').classList.toggle('hidden', !show);
     };
 
-    // Keyboard shortcut: Space to start/stop when not focused on input
-    document.onkeydown = (e) => {
-      if (e.code === 'Space' && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+    document.onkeydown = e => {
+      if (e.code === 'Space' && !['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName)) {
         e.preventDefault();
-        running ? stopSession() : startSession();
+        state.running ? stop() : start();
       }
     };
+
+    navigator.mediaDevices?.addEventListener('devicechange', loadDevices);
+
+    // =========================================================================
+    // INIT
+    // =========================================================================
+    restore(load());
+    el.silenceHint.textContent = silenceDesc(+el.silence.value);
+    el.durationHint.textContent = durationDesc(+el.duration.value);
+    updateHandle();
+    loadDevices();
+    detectIP();
   </script>
 </body>
 </html>`;

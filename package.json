@@ -6,7 +6,8 @@
     "dev": "bun run src/index.ts",
     "build": "bun run build.ts mac-arm64",
     "build:all": "bun run build.ts all",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "bun test"
   },
   "author": "Hugo",
   "license": "MIT"

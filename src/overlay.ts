@@ -1,10 +1,26 @@
+/**
+ * OBS Overlay Template
+ *
+ * This HTML template is served at /overlay and displays live transcription
+ * captions as a transparent overlay for OBS/VMix browser sources.
+ *
+ * Features:
+ * - Receives text updates via Server-Sent Events (SSE)
+ * - Supports dynamic positioning (X/Y percentage)
+ * - Two visual styles: Netflix-style outline or background box
+ * - Persists style settings in localStorage
+ * - Auto-reconnects on connection loss
+ */
+
 export const OVERLAY = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <style>
+    /* Reset */
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+    /* Canvas: fixed 1080p for OBS */
     html, body {
       inline-size: 1920px;
       block-size: 1080px;
@@ -16,33 +32,22 @@ export const OVERLAY = `<!DOCTYPE html>
       background: transparent;
     }
 
-    body.preview { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+    /* Preview mode: show background gradient when ?bg query param present */
+    body.preview {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
 
+    /* Caption container: positioned via JS */
     #caption {
       position: absolute;
-      inset-block-end: 60px;
-      inset-inline: 60px;
-      text-align: center;
-      max-inline-size: 1400px;
-      margin-inline: auto;
       left: 50%;
-      transform: translateX(-50%);
-      right: auto;
+      top: 92%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      max-inline-size: 1600px;
     }
 
-    #caption.align-left {
-      text-align: left;
-      left: 60px;
-      transform: none;
-    }
-
-    #caption.align-right {
-      text-align: right;
-      left: auto;
-      right: 60px;
-      transform: none;
-    }
-
+    /* Caption text base styles */
     #text {
       display: inline;
       color: #ffffff;
@@ -56,7 +61,7 @@ export const OVERLAY = `<!DOCTYPE html>
       overflow-wrap: break-word;
     }
 
-    /* Netflix style (default) */
+    /* Style: Netflix-style outline (default) */
     #text.style-none {
       -webkit-text-stroke: 1.5px #000000;
       paint-order: stroke fill;
@@ -72,7 +77,7 @@ export const OVERLAY = `<!DOCTYPE html>
       border-radius: 0;
     }
 
-    /* Black box style */
+    /* Style: Black background box */
     #text.style-box {
       -webkit-text-stroke: 0;
       text-shadow: none;
@@ -83,6 +88,7 @@ export const OVERLAY = `<!DOCTYPE html>
       -webkit-box-decoration-break: clone;
     }
 
+    /* Visible state */
     #text.visible {
       opacity: 1;
     }
@@ -90,64 +96,84 @@ export const OVERLAY = `<!DOCTYPE html>
 </head>
 <body>
   <div id="caption"><span id="text" class="style-none"></span></div>
+
   <script>
-    if (location.search.includes('bg')) document.body.classList.add('preview');
+    // =========================================================================
+    // SETUP
+    // =========================================================================
+    // Enable preview background if ?bg query param present
+    if (location.search.includes('bg')) {
+      document.body.classList.add('preview');
+    }
 
     const caption = document.getElementById('caption');
     const text = document.getElementById('text');
-    let timer;
 
-    // Apply styles from message or localStorage
+    // =========================================================================
+    // STYLE MANAGEMENT
+    // =========================================================================
+    /**
+     * Apply style settings to the caption
+     * @param {Object} style - Style object with fontSize, posX, posY, bgStyle
+     */
     const applyStyle = (style) => {
       if (style.fontSize) {
         text.style.fontSize = style.fontSize + 'px';
       }
-      if (style.textAlign) {
-        caption.classList.remove('align-left', 'align-right');
-        if (style.textAlign === 'left') caption.classList.add('align-left');
-        if (style.textAlign === 'right') caption.classList.add('align-right');
+      if (style.posX !== undefined && style.posY !== undefined) {
+        caption.style.left = style.posX + '%';
+        caption.style.top = style.posY + '%';
       }
       if (style.bgStyle) {
         text.classList.remove('style-none', 'style-box');
         text.classList.add('style-' + style.bgStyle);
       }
-      // Save to localStorage for persistence
+      // Persist for page reloads
       localStorage.setItem('overlay-style', JSON.stringify(style));
     };
 
-    // Load saved style on init
+    // Restore saved style on page load
     try {
       const saved = JSON.parse(localStorage.getItem('overlay-style') || '{}');
-      if (Object.keys(saved).length) applyStyle(saved);
-    } catch {}
+      if (Object.keys(saved).length) {
+        applyStyle(saved);
+      }
+    } catch { /* ignore parse errors */ }
 
+    // =========================================================================
+    // SSE CONNECTION
+    // =========================================================================
+    /**
+     * Connect to the SSE stream and handle messages
+     * Auto-reconnects on connection loss
+     */
     const connect = () => {
-      const es = new EventSource('/stream');
+      const eventSource = new EventSource('/stream');
 
-      es.onmessage = ({ data }) => {
+      eventSource.onmessage = ({ data }) => {
         const msg = JSON.parse(data);
 
-        // Handle style updates
+        // Handle style update messages
         if (msg.type === 'style') {
           applyStyle(msg);
           return;
         }
 
-        // Handle text updates
+        // Handle text update messages
         if (msg.text) {
           text.textContent = msg.text;
           text.classList.add('visible');
-          clearTimeout(timer);
-          timer = setTimeout(() => text.classList.remove('visible'), 5000);
         }
       };
 
-      es.onerror = () => {
-        es.close();
+      // Auto-reconnect after 2 seconds on error
+      eventSource.onerror = () => {
+        eventSource.close();
         setTimeout(connect, 2000);
       };
     };
 
+    // Start connection
     connect();
   </script>
 </body>
