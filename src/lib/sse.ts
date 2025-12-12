@@ -1,166 +1,115 @@
 /**
- * Server-Sent Events (SSE) Client Manager
+ * Server-Sent Events (SSE) Manager
  *
- * Thread-safe client registry with proper cleanup.
- * Uses class-based design for better testability.
+ * Clean pub/sub pattern using EventEmitter for broadcasting.
  */
 
+import { EventEmitter } from "node:events";
 import { SSE_MAX_CLIENTS } from "../config";
-import { createLogger } from "./logger";
 import type { StylePayload } from "./validators";
-
-const log = createLogger("sse");
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-export interface SSEClient {
-  id: number;
-  controller: ReadableStreamDefaultController<Uint8Array>;
-  connectedAt: Date;
-}
-
 interface SSEMessage {
-  type: "text" | "style" | "ping" | "shutdown";
+  event: string;
   data: unknown;
 }
 
 // =============================================================================
-// SSE MANAGER CLASS
+// SSE MANAGER
 // =============================================================================
 
-class SSEManager {
-  private clients = new Map<number, SSEClient>();
-  private nextId = 0;
-  private encoder = new TextEncoder();
+class SSEManager extends EventEmitter {
+  private clientCount = 0;
 
-  /**
-   * Add a new SSE client
-   */
-  addClient(controller: ReadableStreamDefaultController<Uint8Array>): number {
-    if (this.clients.size >= SSE_MAX_CLIENTS) {
-      log.warn(
-        { current: this.clients.size, max: SSE_MAX_CLIENTS },
-        "Max clients reached, rejecting new connection"
-      );
-      throw new Error("Max clients reached");
-    }
-
-    const id = ++this.nextId;
-    const client: SSEClient = {
-      id,
-      controller,
-      connectedAt: new Date(),
-    };
-
-    this.clients.set(id, client);
-    log.info({ clientId: id, total: this.clients.size }, "Client connected");
-
-    return id;
+  constructor() {
+    super();
+    this.setMaxListeners(SSE_MAX_CLIENTS + 10);
   }
 
   /**
-   * Remove a client
+   * Create an async iterator for a client connection
    */
-  removeClient(id: number): boolean {
-    const removed = this.clients.delete(id);
-    if (removed) {
-      log.info({ clientId: id, total: this.clients.size }, "Client disconnected");
+  async *subscribe(): AsyncGenerator<SSEMessage> {
+    if (this.clientCount >= SSE_MAX_CLIENTS) {
+      throw new Error("Max clients reached");
     }
-    return removed;
+
+    this.clientCount++;
+    const queue: SSEMessage[] = [];
+    let resolve: (() => void) | null = null;
+
+    const handler = (msg: SSEMessage) => {
+      queue.push(msg);
+      resolve?.();
+    };
+
+    this.on("message", handler);
+
+    try {
+      while (true) {
+        if (queue.length === 0) {
+          await new Promise<void>((r) => {
+            resolve = r;
+          });
+          resolve = null;
+        }
+
+        while (queue.length > 0) {
+          yield queue.shift()!;
+        }
+      }
+    } finally {
+      this.clientCount--;
+      this.off("message", handler);
+    }
   }
 
   /**
    * Get current client count
    */
   getClientCount(): number {
-    return this.clients.size;
+    return this.clientCount;
   }
 
   /**
    * Broadcast text to all clients
    */
   broadcastText(text: string): void {
-    this.broadcast({ type: "text", data: { text } });
-    log.debug({ length: text.length, clients: this.clients.size }, "Broadcast text");
+    this.emit("message", { event: "text", data: { text } });
   }
 
   /**
    * Broadcast style update to all clients
    */
   broadcastStyle(style: StylePayload): void {
-    this.broadcast({ type: "style", data: { type: "style", ...style } });
-    log.info({ style, clients: this.clients.size }, "Broadcast style");
+    this.emit("message", { event: "style", data: style });
   }
 
   /**
-   * Send ping to all clients (keep-alive)
+   * Send ping to all clients (for SSE, this is handled differently)
    */
   ping(): void {
-    const data = this.encoder.encode(": ping\n\n");
-    this.sendRaw(data);
+    this.emit("message", { event: "ping", data: {} });
   }
 
   /**
    * Notify clients of shutdown
    */
   shutdown(): void {
-    this.broadcast({ type: "shutdown", data: { message: "Server shutting down" } });
-    log.warn({ clients: this.clients.size }, "Broadcast shutdown");
-  }
-
-  /**
-   * Internal: Format and broadcast SSE message
-   */
-  private broadcast(message: SSEMessage): void {
-    const formatted = this.formatMessage(message);
-    this.sendRaw(formatted);
-  }
-
-  /**
-   * Internal: Send raw data to all clients
-   */
-  private sendRaw(data: Uint8Array): void {
-    const failed: number[] = [];
-
-    for (const [id, client] of this.clients) {
-      try {
-        client.controller.enqueue(data);
-      } catch (error) {
-        failed.push(id);
-        log.warn(
-          { clientId: id, error: error instanceof Error ? error.message : String(error) },
-          "Failed to send to client"
-        );
-      }
-    }
-
-    // Clean up failed clients
-    for (const id of failed) {
-      this.removeClient(id);
-    }
-  }
-
-  /**
-   * Internal: Format message as SSE
-   */
-  private formatMessage(message: SSEMessage): Uint8Array {
-    const eventId = Date.now();
-    const sseData = `id:${eventId}\nevent:${message.type}\ndata:${JSON.stringify(message.data)}\n\n`;
-    return this.encoder.encode(sseData);
+    this.emit("message", { event: "shutdown", data: { message: "Server shutting down" } });
   }
 }
 
 // =============================================================================
-// SINGLETON INSTANCE
+// SINGLETON
 // =============================================================================
 
 export const sseManager = new SSEManager();
 
-// Export convenience functions
-export const addClient = sseManager.addClient.bind(sseManager);
-export const removeClient = sseManager.removeClient.bind(sseManager);
-export const getClientCount = sseManager.getClientCount.bind(sseManager);
+// Convenience exports
 export const broadcast = sseManager.broadcastText.bind(sseManager);
 export const broadcastStyle = sseManager.broadcastStyle.bind(sseManager);
+export const getClientCount = sseManager.getClientCount.bind(sseManager);

@@ -153,27 +153,25 @@ export const OVERLAY = `<!DOCTYPE html>
      * Auto-reconnects on connection loss
      */
     const connect = () => {
-      const eventSource = new EventSource('/stream');
+      const es = new EventSource('/stream');
 
-      eventSource.onmessage = ({ data }) => {
+      // Handle text updates
+      es.addEventListener('text', ({ data }) => {
         const msg = JSON.parse(data);
-
-        // Handle style update messages
-        if (msg.type === 'style') {
-          applyStyle(msg);
-          return;
-        }
-
-        // Handle text update messages
         if (msg.text) {
           text.textContent = msg.text;
           text.classList.add('visible');
         }
-      };
+      });
+
+      // Handle style updates
+      es.addEventListener('style', ({ data }) => {
+        applyStyle(JSON.parse(data));
+      });
 
       // Auto-reconnect after 2 seconds on error
-      eventSource.onerror = () => {
-        eventSource.close();
+      es.onerror = () => {
+        es.close();
         setTimeout(connect, 2000);
       };
     };

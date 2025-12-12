@@ -8,19 +8,18 @@
  * - REST endpoints for broadcasting text and styles
  */
 
+import { networkInterfaces } from "node:os";
 import { parseArgs } from "node:util";
 import { cors } from "@elysiajs/cors";
-import { Elysia, t } from "elysia";
+import { Elysia, sse, t } from "elysia";
 import { VERSION } from "./config";
-import { DASHBOARD } from "./dashboard";
+import { getDashboardAsset } from "./dashboard-assets";
 import { env } from "./env";
 import { createLogger } from "./lib/logger";
 import {
-  addClient,
   broadcast,
   broadcastStyle,
   getClientCount,
-  removeClient,
   sseManager,
 } from "./lib/sse";
 import { broadcastSchema, styleSchema } from "./lib/validators";
@@ -99,6 +98,8 @@ const app = new Elysia()
   })
 
   .onError(({ error, code }) => {
+    // Don't log NOT_FOUND - it's just noise from missing assets
+    if (code === "NOT_FOUND") return;
     const message = "message" in error ? error.message : String(error);
     log.error({ code, error: message }, "Request error");
   })
@@ -107,17 +108,44 @@ const app = new Elysia()
   // ROUTES
   // ==========================================================================
 
-  // Dashboard (control panel)
-  .get(
-    "/",
-    () => new Response(DASHBOARD, { headers: { "Content-Type": "text/html; charset=utf-8" } })
-  )
+  // Dashboard (Svelte SPA - serve embedded assets)
+  .get("/", ({ set }) => {
+    const asset = getDashboardAsset("/");
+    if (!asset) {
+      set.status = 404;
+      return "Not found";
+    }
+    return new Response(asset.content, { headers: { "Content-Type": asset.mime } });
+  })
+
+  // Dashboard assets (/_app/*, etc.)
+  .get("/_app/*", ({ params, set }) => {
+    const path = "/_app/" + params["*"];
+    const asset = getDashboardAsset(path);
+    if (!asset) {
+      set.status = 404;
+      return "Not found";
+    }
+    // Cache immutable assets for 1 year
+    return new Response(asset.content, {
+      headers: {
+        "Content-Type": asset.mime,
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
+  })
 
   // Overlay (OBS browser source)
   .get(
     "/overlay",
     () => new Response(OVERLAY, { headers: { "Content-Type": "text/html; charset=utf-8" } })
   )
+
+  // Favicon (empty response to avoid 404 noise)
+  .get("/favicon.ico", ({ set }) => {
+    set.status = 204;
+    return null;
+  })
 
   // Health check
   .get("/health", () => ({
@@ -127,84 +155,46 @@ const app = new Elysia()
     uptime: process.uptime(),
   }))
 
+  // Network IP for overlay URL
+  .get("/network-ip", () => {
+    const nets = networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name] ?? []) {
+        // Skip internal/loopback and IPv6
+        if (!net.internal && net.family === "IPv4") {
+          return { ip: net.address };
+        }
+      }
+    }
+    return { ip: null };
+  })
+
   // SSE stream for real-time updates
-  .get("/stream", ({ set }) => {
-    let clientId: number;
-
-    const stream = new ReadableStream<Uint8Array>({
-      start(controller) {
-        try {
-          clientId = addClient(controller);
-          log.info({ clientId, total: getClientCount() }, "SSE client connected");
-        } catch (error) {
-          log.error({ error }, "Failed to add SSE client");
-          controller.close();
-        }
-      },
-      cancel() {
-        if (clientId) {
-          removeClient(clientId);
-          log.info({ clientId, total: getClientCount() }, "SSE client disconnected");
-        }
-      },
-    });
-
-    set.headers = {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    };
-
-    return stream;
+  .get("/stream", async function* () {
+    for await (const msg of sseManager.subscribe()) {
+      yield sse({ event: msg.event, data: msg.data });
+    }
   })
 
   // POST /broadcast - send text to all connected overlays
-  .post(
-    "/broadcast",
-    ({ body }) => {
-      const result = broadcastSchema.safeParse(body);
-
-      if (!result.success) {
-        log.warn({ errors: result.error.flatten() }, "Broadcast validation failed");
-        return { success: false, error: result.error.flatten().fieldErrors };
-      }
-
-      broadcast(result.data.text);
-      log.info({ textLength: result.data.text.length }, "Broadcast sent");
-      return { success: true };
-    },
-    {
-      body: t.Object({
-        text: t.String(),
-      }),
+  .post("/broadcast", ({ body }) => {
+    const result = broadcastSchema.safeParse(body);
+    if (!result.success) {
+      return { success: false, error: result.error.flatten().fieldErrors };
     }
-  )
+    broadcast(result.data.text);
+    return { success: true };
+  })
 
   // POST /style - update overlay styling
-  .post(
-    "/style",
-    ({ body }) => {
-      const result = styleSchema.safeParse(body);
-
-      if (!result.success) {
-        log.warn({ errors: result.error.flatten() }, "Style validation failed");
-        return { success: false, error: result.error.flatten().fieldErrors };
-      }
-
-      broadcastStyle(result.data);
-      log.info({ style: result.data }, "Style updated");
-      return { success: true };
-    },
-    {
-      body: t.Object({
-        fontSize: t.Optional(t.Union([t.String(), t.Number()])),
-        posX: t.Optional(t.Union([t.String(), t.Number()])),
-        posY: t.Optional(t.Union([t.String(), t.Number()])),
-        bgStyle: t.Optional(t.String()),
-      }),
+  .post("/style", ({ body }) => {
+    const result = styleSchema.safeParse(body);
+    if (!result.success) {
+      return { success: false, error: result.error.flatten().fieldErrors };
     }
-  );
+    broadcastStyle(result.data);
+    return { success: true };
+  });
 
 // =============================================================================
 // STARTUP
@@ -224,36 +214,22 @@ async function checkIfRunning(): Promise<boolean> {
 function showWelcomeMessage(browserOpened: boolean): void {
   console.clear();
   console.log(`
-\x1b[1m\x1b[35m╔══════════════════════════════════════════════════════╗
-║           TRANSCRIPTION v${VERSION.padEnd(10)}               ║
-║         Live captions for OBS / VMix                 ║
-╚══════════════════════════════════════════════════════╝\x1b[0m
+  \x1b[1mTranscription\x1b[0m \x1b[2mv${VERSION}\x1b[0m
 
-\x1b[32m✓\x1b[0m Server running at \x1b[4m\x1b[36mhttp://localhost:${env.PORT}\x1b[0m
-${browserOpened ? "\x1b[32m✓\x1b[0m Browser opened automatically" : "\x1b[33m→\x1b[0m Open the URL above in your browser"}
+  \x1b[32m●\x1b[0m http://localhost:${env.PORT}
+  ${browserOpened ? "\x1b[2mBrowser opened\x1b[0m" : "\x1b[2mOpen in browser to start\x1b[0m"}
 
-\x1b[1m┌─ QUICK START ─────────────────────────────────────────┐\x1b[0m
-│                                                        │
-│  1. Paste your Gladia API key in the dashboard         │
-│  2. Select your language and click Start               │
-│  3. In OBS: Browser Source → \x1b[4mhttp://localhost:${env.PORT}/overlay\x1b[0m │
-│     (Recommended: 1920x1080)                           │
-│                                                        │
-\x1b[1m└────────────────────────────────────────────────────────┘\x1b[0m
-
-\x1b[2mPress CTRL+C to stop the server.\x1b[0m
+  \x1b[2mOBS overlay:\x1b[0m http://localhost:${env.PORT}/overlay
 `);
 }
 
 function showAlreadyRunningMessage(): void {
   console.clear();
   console.log(`
-\x1b[1m\x1b[35m╔══════════════════════════════════════════════════════╗
-║           TRANSCRIPTION v${VERSION.padEnd(10)}               ║
-╚══════════════════════════════════════════════════════╝\x1b[0m
+  \x1b[1mTranscription\x1b[0m \x1b[2mv${VERSION}\x1b[0m
 
-\x1b[33m⚡\x1b[0m Server is already running!
-\x1b[32m✓\x1b[0m Opening \x1b[4m\x1b[36mhttp://localhost:${env.PORT}\x1b[0m in your browser...
+  \x1b[33m●\x1b[0m Already running at http://localhost:${env.PORT}
+  \x1b[2mOpening browser...\x1b[0m
 `);
 }
 
