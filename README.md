@@ -30,11 +30,14 @@ irm https://raw.githubusercontent.com/KazeTachinuu/gladia-to-obs/master/install.
 
 1. Go to the [Releases page](https://github.com/KazeTachinuu/gladia-to-obs/releases/latest)
 2. Download the file for your system:
-   - **macOS (Apple Silicon)**: `transcription-mac-arm64`
-   - **macOS (Intel)**: `transcription-mac-x64`
+   - **macOS**: `transcription-mac-universal`
    - **Windows**: `transcription-windows-x64.exe`
    - **Linux**: `transcription-linux-x64`
-3. Make it executable and run (macOS/Linux: `chmod +x <file>` first)
+3. **macOS only**: Remove the quarantine attribute (required for downloaded files):
+   ```bash
+   xattr -cr ~/Downloads/transcription-mac-universal
+   ```
+4. Make it executable and run (macOS/Linux: `chmod +x <file>` first)
 
 
 ## Usage Guide
