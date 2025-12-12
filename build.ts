@@ -159,8 +159,9 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const requestedTarget = args[0] as Target | "all" | undefined;
 
-  // Clean and create directories
+  // Clean and create directories, install root dependencies
   await $`rm -rf .build && mkdir -p .build dist`.quiet();
+  await $`bun install --frozen-lockfile`.quiet();
 
   // Build Svelte dashboard and generate embedded assets
   await buildDashboard();

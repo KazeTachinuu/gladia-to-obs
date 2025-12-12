@@ -1,6 +1,6 @@
 {
   "name": "transcription",
-  "version": "3.6.1",
+  "version": "3.6.2",
   "description": "Live transcription overlay for OBS/VMix with Gladia API",
   "type": "module",
   "scripts": {
