@@ -8,7 +8,9 @@ Live captions overlay for OBS and VMix using the Gladia API.
 
 ## Installation
 
-### macOS / Linux
+### Option 1: Install via script (easiest)
+
+#### macOS / Linux
 
 Open a Terminal and paste this command:
 
@@ -16,13 +18,23 @@ Open a Terminal and paste this command:
 curl -fsSL https://raw.githubusercontent.com/KazeTachinuu/gladia-to-obs/master/install.sh | bash
 ```
 
-### Windows
+#### Windows
 
 Open PowerShell and paste this command:
 
 ```powershell
 irm https://raw.githubusercontent.com/KazeTachinuu/gladia-to-obs/master/install.ps1 | iex
 ```
+
+### Option 2: Manual download
+
+1. Go to the [Releases page](https://github.com/KazeTachinuu/gladia-to-obs/releases/latest)
+2. Download the file for your system:
+   - **macOS (Apple Silicon)**: `transcription-mac-arm64`
+   - **macOS (Intel)**: `transcription-mac-x64`
+   - **Windows**: `transcription-windows-x64.exe`
+   - **Linux**: `transcription-linux-x64`
+3. Make it executable and run (macOS/Linux: `chmod +x <file>` first)
 
 
 ## Usage Guide
