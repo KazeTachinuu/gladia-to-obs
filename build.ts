@@ -27,7 +27,7 @@ type Target = keyof typeof TARGETS;
 
 async function buildDashboard(): Promise<void> {
   console.log("Building dashboard...");
-  await $`cd dashboard && bun run build`.quiet();
+  await $`cd dashboard && bun install --frozen-lockfile && bun run build`.quiet();
 }
 
 // =============================================================================
