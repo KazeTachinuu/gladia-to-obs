@@ -36,7 +36,7 @@ async function bundle(): Promise<string> {
 
   // Verify bundle exists
   const file = Bun.file(outfile);
-  if (!await file.exists()) {
+  if (!(await file.exists())) {
     console.error("Bundle not created at", outfile);
     process.exit(1);
   }
@@ -49,8 +49,8 @@ async function compile(bundlePath: string, target: Target): Promise<string> {
   const ext = target.startsWith("win") ? ".exe" : "";
   const outfile = `dist/transcription-${target}${ext}`;
 
-  // Compile bundle to standalone binary
-  await $`bun build --compile --minify --bytecode --target=${bunTarget} ${bundlePath} --outfile ${outfile}`.quiet();
+  // Compile bundle to standalone binary (without bytecode for compatibility)
+  await $`bun build --compile --minify --target=${bunTarget} ${bundlePath} --outfile ${outfile}`.quiet();
 
   return outfile;
 }
@@ -69,9 +69,10 @@ async function main(): Promise<void> {
   console.log("Bundling...");
   const bundlePath = await bundle();
 
-  const targets: Target[] = requestedTarget === "all" || !requestedTarget
-    ? Object.keys(TARGETS) as Target[]
-    : [requestedTarget];
+  const targets: Target[] =
+    requestedTarget === "all" || !requestedTarget
+      ? (Object.keys(TARGETS) as Target[])
+      : [requestedTarget];
 
   // Validate target
   if (requestedTarget && requestedTarget !== "all" && !TARGETS[requestedTarget as Target]) {

@@ -1,5 +1,5 @@
-import { PORT } from "./types";
 import { AUDIO_PROCESSOR } from "./audio-processor";
+import { env } from "./env";
 
 export const DASHBOARD = `<!DOCTYPE html>
 <html lang="en">
@@ -573,7 +573,7 @@ export const DASHBOARD = `<!DOCTYPE html>
             <div>
               <label class="label-muted mb-4">This computer</label>
               <div class="row gap-8">
-                <code class="code">http://localhost:${PORT}/overlay</code>
+                <code class="code">http://localhost:${env.PORT}/overlay</code>
                 <button id="copy-local" class="btn btn-secondary">Copy</button>
               </div>
             </div>
@@ -585,7 +585,7 @@ export const DASHBOARD = `<!DOCTYPE html>
               </div>
             </div>
           </div>
-          <p class="text-xs text-muted mt-4">Set resolution to 1920×1080. <a href="http://localhost:${PORT}/overlay?bg" target="_blank">Preview overlay</a></p>
+          <p class="text-xs text-muted mt-4">Set resolution to 1920×1080. <a href="http://localhost:${env.PORT}/overlay?bg" target="_blank">Preview overlay</a></p>
         </div>
       </div>
 
@@ -730,7 +730,17 @@ export const DASHBOARD = `<!DOCTYPE html>
       worklet: null,
       startTime: null,
       timer: null,
+      reconnectAttempts: 0,
+      reconnectTimeout: null,
+      lastText: '',
+      wsUrl: null,
     };
+
+    // =========================================================================
+    // CONSTANTS
+    // =========================================================================
+    const MAX_RECONNECT_ATTEMPTS = 5;
+    const BASE_RECONNECT_DELAY = 1000;
 
     // =========================================================================
     // UI
@@ -768,26 +778,57 @@ export const DASHBOARD = `<!DOCTYPE html>
     };
 
     // =========================================================================
-    // CONFIG
+    // CONFIG PERSISTENCE
     // =========================================================================
-    const load = () => { try { return JSON.parse(localStorage.getItem('t') || '{}'); } catch { return {}; } };
-    const save = () => localStorage.setItem('t', JSON.stringify({
-      k: el.key.value, s: el.audioSource.value, l: el.lang.value, t: el.translateTo.value,
-      si: el.silence.value, d: el.duration.value, v: el.vocab.value,
-      fs: el.fontSize.value, px: el.posX.value, py: el.posY.value, bg: el.bgStyle.value
-    }));
+    const STORAGE_KEY = 'transcription_config';
 
-    const restore = c => {
-      if (c.k) el.key.value = c.k;
-      if (c.l) el.lang.value = c.l;
-      if (c.t) el.translateTo.value = c.t;
-      if (c.si) { el.silence.value = c.si; el.silenceVal.textContent = c.si + 's'; }
-      if (c.d) { el.duration.value = c.d; el.durationVal.textContent = c.d + 's'; }
-      if (c.v) el.vocab.value = c.v;
-      if (c.fs) { el.fontSize.value = c.fs; el.fontSizeVal.textContent = c.fs + 'px'; }
-      if (c.px) el.posX.value = c.px;
-      if (c.py) el.posY.value = c.py;
-      if (c.bg) el.bgStyle.value = c.bg;
+    /** Load saved configuration from localStorage */
+    const loadConfig = () => {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      } catch {
+        return {};
+      }
+    };
+
+    /** Save current configuration to localStorage */
+    const saveConfig = () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        apiKey: el.key.value,
+        audioSource: el.audioSource.value,
+        language: el.lang.value,
+        translateTo: el.translateTo.value,
+        silenceThreshold: el.silence.value,
+        maxDuration: el.duration.value,
+        vocabulary: el.vocab.value,
+        fontSize: el.fontSize.value,
+        positionX: el.posX.value,
+        positionY: el.posY.value,
+        bgStyle: el.bgStyle.value
+      }));
+    };
+
+    /** Restore configuration from saved state */
+    const restoreConfig = (config) => {
+      if (config.apiKey) el.key.value = config.apiKey;
+      if (config.language) el.lang.value = config.language;
+      if (config.translateTo) el.translateTo.value = config.translateTo;
+      if (config.silenceThreshold) {
+        el.silence.value = config.silenceThreshold;
+        el.silenceVal.textContent = config.silenceThreshold + 's';
+      }
+      if (config.maxDuration) {
+        el.duration.value = config.maxDuration;
+        el.durationVal.textContent = config.maxDuration + 's';
+      }
+      if (config.vocabulary) el.vocab.value = config.vocabulary;
+      if (config.fontSize) {
+        el.fontSize.value = config.fontSize;
+        el.fontSizeVal.textContent = config.fontSize + 'px';
+      }
+      if (config.positionX) el.posX.value = config.positionX;
+      if (config.positionY) el.posY.value = config.positionY;
+      if (config.bgStyle) el.bgStyle.value = config.bgStyle;
     };
 
     // =========================================================================
@@ -799,8 +840,10 @@ export const DASHBOARD = `<!DOCTYPE html>
         s.getTracks().forEach(t => t.stop());
         const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
         el.audioSource.innerHTML = devs.map((d,i) => '<option value="'+d.deviceId+'">'+(d.label||'Mic '+(i+1))+'</option>').join('');
-        const c = load();
-        if (c.s && devs.some(d => d.deviceId === c.s)) el.audioSource.value = c.s;
+        const config = loadConfig();
+        if (config.audioSource && devs.some(d => d.deviceId === config.audioSource)) {
+          el.audioSource.value = config.audioSource;
+        }
       } catch { el.audioSource.innerHTML = '<option value="">Default</option>'; }
     };
 
@@ -847,6 +890,7 @@ export const DASHBOARD = `<!DOCTYPE html>
     // =========================================================================
     const setupAudio = async () => {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('MEDIA_NOT_SUPPORTED');
+      if (!window.AudioWorklet) throw new Error('WORKLET_NOT_SUPPORTED');
       state.ctx = new AudioContext();
       const c = { channelCount: 1, echoCancellation: true, noiseSuppression: true };
       if (el.audioSource.value) c.deviceId = { exact: el.audioSource.value };
@@ -875,7 +919,7 @@ export const DASHBOARD = `<!DOCTYPE html>
       const key = el.key.value.trim();
       if (!key) { showError('API key required'); return; }
 
-      save();
+      saveConfig();
       setStatus('Connecting...', 'wait');
       el.preview.textContent = 'Connecting...';
       el.btn.disabled = true;
@@ -917,6 +961,7 @@ export const DASHBOARD = `<!DOCTYPE html>
             el.preview.textContent = 'Initializing...';
             await setupAudio();
             state.running = true;
+            state.reconnectAttempts = 0; // Reset on successful connection
             state.startTime = Date.now();
             state.timer = setInterval(updateTimer, 1000);
             el.btn.disabled = false;
@@ -928,7 +973,12 @@ export const DASHBOARD = `<!DOCTYPE html>
             el.preview.classList.add('active');
             setStatus('Live', 'live');
           } catch (e) {
-            const errs = { MIC_DENIED: ['Microphone blocked', 'Allow in browser settings'], MIC_NOT_FOUND: ['No microphone', 'Connect one'] };
+            const errs = {
+              MIC_DENIED: ['Microphone blocked', 'Allow microphone access in browser settings'],
+              MIC_NOT_FOUND: ['No microphone found', 'Please connect a microphone'],
+              MEDIA_NOT_SUPPORTED: ['Browser not supported', 'Please use Chrome, Edge, or Safari'],
+              WORKLET_NOT_SUPPORTED: ['Browser outdated', 'Please update your browser or use Chrome/Edge']
+            };
             const [t, d] = errs[e.message] || ['Audio error', e.message];
             showError(t, d);
             stop();
@@ -945,13 +995,38 @@ export const DASHBOARD = `<!DOCTYPE html>
           } catch {}
         };
 
-        state.ws.onerror = () => { showError('Connection failed'); stop(); };
-        state.ws.onclose = e => { if (state.running && e.code !== 1000) showError('Disconnected', 'Code: ' + e.code); stop(); };
+        state.ws.onerror = () => {
+          if (state.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            attemptReconnect();
+          } else {
+            showError('Connection failed', 'Max retries reached');
+            stop();
+          }
+        };
+
+        state.ws.onclose = e => {
+          if (state.running && e.code !== 1000) {
+            if (state.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+              attemptReconnect();
+            } else {
+              showError('Disconnected', 'Code: ' + e.code);
+              stop();
+            }
+          } else {
+            stop();
+          }
+        };
 
       } catch (e) { el.btn.disabled = false; showError(e.message); }
     };
 
-    const stop = () => {
+    const stop = (resetReconnect = true) => {
+      if (state.reconnectTimeout) {
+        clearTimeout(state.reconnectTimeout);
+        state.reconnectTimeout = null;
+      }
+      if (resetReconnect) state.reconnectAttempts = 0;
+
       state.worklet?.disconnect();
       state.ctx?.close().catch(() => {});
       state.stream?.getTracks().forEach(t => t.stop());
@@ -974,6 +1049,23 @@ export const DASHBOARD = `<!DOCTYPE html>
       if (el.statusText.textContent === 'Live') setStatus('Ready', 'idle');
     };
 
+    const attemptReconnect = () => {
+      state.reconnectAttempts++;
+      const delay = BASE_RECONNECT_DELAY * Math.pow(2, state.reconnectAttempts - 1);
+      setStatus('Reconnecting (' + state.reconnectAttempts + '/' + MAX_RECONNECT_ATTEMPTS + ')...', 'wait');
+      el.preview.textContent = 'Connection lost. Reconnecting in ' + (delay / 1000) + 's...';
+
+      // Clean up current connection without resetting reconnect state
+      state.worklet?.disconnect();
+      state.ctx?.close().catch(() => {});
+      state.stream?.getTracks().forEach(t => t.stop());
+      state.ws = state.ctx = state.stream = state.worklet = null;
+
+      state.reconnectTimeout = setTimeout(() => {
+        start();
+      }, delay);
+    };
+
     // =========================================================================
     // IP DETECTION
     // =========================================================================
@@ -984,7 +1076,7 @@ export const DASHBOARD = `<!DOCTYPE html>
       pc.onicecandidate = e => {
         if (!e.candidate) return;
         const m = e.candidate.candidate.match(/([0-9]{1,3}(\\.[0-9]{1,3}){3})/);
-        if (m && m[1] && !m[1].startsWith('127.')) { el.networkUrl.textContent = 'http://' + m[1] + ':${PORT}/overlay'; pc.close(); }
+        if (m && m[1] && !m[1].startsWith('127.')) { el.networkUrl.textContent = 'http://' + m[1] + ':${env.PORT}/overlay'; pc.close(); }
       };
       setTimeout(() => { if (el.networkUrl.textContent.includes('Detecting')) el.networkUrl.textContent = 'Unavailable'; pc.close(); }, 3000);
     };
@@ -1008,46 +1100,46 @@ export const DASHBOARD = `<!DOCTYPE html>
     el.silence.oninput = () => {
       el.silenceVal.textContent = el.silence.value + 's';
       el.silenceHint.textContent = silenceDesc(+el.silence.value);
-      save();
+      saveConfig();
       if (state.running) showFeedback('Response speed changed — Restart to apply');
     };
     el.duration.oninput = () => {
       el.durationVal.textContent = el.duration.value + 's';
       el.durationHint.textContent = durationDesc(+el.duration.value);
-      save();
+      saveConfig();
       if (state.running) showFeedback('Max segment changed — Restart to apply');
     };
     el.lang.onchange = () => {
-      save();
+      saveConfig();
       if (state.running) showFeedback('Language changed — Restart to apply');
     };
     el.translateTo.onchange = () => {
-      save();
+      saveConfig();
       if (state.running) showFeedback('Translation changed — Restart to apply');
     };
     el.audioSource.onchange = () => {
-      save();
+      saveConfig();
       if (state.running) showFeedback('Audio source changed — Restart to apply');
     };
     el.vocab.onchange = () => {
-      save();
+      saveConfig();
       if (state.running) showFeedback('Vocabulary changed — Restart to apply');
     };
 
     // Settings that apply immediately (no restart needed)
-    el.fontSize.oninput = () => { el.fontSizeVal.textContent = el.fontSize.value + 'px'; save(); sendStyle(); };
-    el.bgStyle.onchange = () => { save(); sendStyle(); };
-    el.key.onchange = save;
+    el.fontSize.oninput = () => { el.fontSizeVal.textContent = el.fontSize.value + 'px'; saveConfig(); sendStyle(); };
+    el.bgStyle.onchange = () => { saveConfig(); sendStyle(); };
+    el.key.onchange = saveConfig;
 
     el.picker.onmousedown = el.picker.ontouchstart = e => { state.dragging = true; setPos(e); };
     document.onmousemove = e => { if (state.dragging) setPos(e); };
     document.ontouchmove = e => { if (state.dragging) { e.preventDefault(); setPos(e); } };
-    document.onmouseup = document.ontouchend = () => { if (state.dragging) { state.dragging = false; save(); sendStyle(); } };
+    document.onmouseup = document.ontouchend = () => { if (state.dragging) { state.dragging = false; saveConfig(); sendStyle(); } };
 
     el.btn.onclick = () => state.running ? stop() : start();
     el.restartBtn.onclick = restart;
 
-    $('copy-local').onclick = () => { navigator.clipboard.writeText('http://localhost:${PORT}/overlay'); toast('Copied!'); };
+    $('copy-local').onclick = () => { navigator.clipboard.writeText('http://localhost:${env.PORT}/overlay'); toast('Copied!'); };
     $('copy-network').onclick = () => { if (!el.networkUrl.textContent.includes('Detecting')) { navigator.clipboard.writeText(el.networkUrl.textContent); toast('Copied!'); } };
 
     $('toggle-key').onclick = () => {
@@ -1069,7 +1161,7 @@ export const DASHBOARD = `<!DOCTYPE html>
     // =========================================================================
     // INIT
     // =========================================================================
-    restore(load());
+    restoreConfig(loadConfig());
     el.silenceHint.textContent = silenceDesc(+el.silence.value);
     el.durationHint.textContent = durationDesc(+el.duration.value);
     updateHandle();

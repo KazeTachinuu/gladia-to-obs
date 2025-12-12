@@ -3,10 +3,10 @@
  * Follows best practices from bun/deno/cargo installers
  */
 
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { $ } from "bun";
-import { existsSync } from "fs";
-import { homedir } from "os";
-import { dirname, join } from "path";
 
 const BINARY_NAME = "transcription";
 
@@ -34,8 +34,8 @@ async function isInPath(): Promise<boolean> {
 
 function detectShell(): { shell: string; config: string } | null {
   const home = homedir();
-  const shellEnv = process.env.SHELL || "";
-  const shellName = shellEnv.split("/").pop() || "";
+  const shellEnv = process.env["SHELL"] ?? "";
+  const shellName = shellEnv.split("/").pop() ?? "";
 
   // Shell configs in order of preference
   const configs: Record<string, string[]> = {
@@ -45,13 +45,17 @@ function detectShell(): { shell: string; config: string } | null {
   };
 
   // Try detected shell first
-  if (shellName && configs[shellName]) {
-    for (const file of configs[shellName]) {
+  const shellConfigs = shellName ? configs[shellName] : undefined;
+  if (shellName && shellConfigs) {
+    for (const file of shellConfigs) {
       const path = join(home, file);
       if (existsSync(path)) return { shell: shellName, config: path };
     }
     // Create default config for detected shell
-    return { shell: shellName, config: join(home, configs[shellName][0]) };
+    const defaultConfig = shellConfigs[0];
+    if (defaultConfig) {
+      return { shell: shellName, config: join(home, defaultConfig) };
+    }
   }
 
   // Fallback: check all common configs
@@ -70,9 +74,7 @@ async function addToPathUnix(installDir: string): Promise<boolean> {
   if (!shell) return false;
 
   try {
-    const content = existsSync(shell.config)
-      ? await Bun.file(shell.config).text()
-      : "";
+    const content = existsSync(shell.config) ? await Bun.file(shell.config).text() : "";
 
     // Already configured
     if (content.includes(installDir)) return true;
@@ -113,7 +115,10 @@ export async function ensureInPath(): Promise<void> {
 
   const execPath = process.execPath;
   const installDir = getInstallDir();
-  const destPath = join(installDir, process.platform === "win32" ? `${BINARY_NAME}.exe` : BINARY_NAME);
+  const destPath = join(
+    installDir,
+    process.platform === "win32" ? `${BINARY_NAME}.exe` : BINARY_NAME
+  );
 
   // Already in correct location, just need PATH update
   const alreadyInstalled = execPath === destPath;
@@ -129,16 +134,19 @@ export async function ensureInPath(): Promise<void> {
     }
 
     // Add to PATH
-    const pathAdded = process.platform === "win32"
-      ? await addToPathWindows(installDir)
-      : await addToPathUnix(installDir);
+    const pathAdded =
+      process.platform === "win32"
+        ? await addToPathWindows(installDir)
+        : await addToPathUnix(installDir);
 
     if (pathAdded) {
       console.log(`\x1b[32m[SETUP]\x1b[0m Installed to ${destPath}`);
       if (process.platform === "win32") {
         console.log(`        Restart terminal, then run: \x1b[1m${BINARY_NAME}\x1b[0m\n`);
       } else {
-        console.log(`        Run: \x1b[1msource ~/${detectShell()?.config.split("/").pop()} && ${BINARY_NAME}\x1b[0m`);
+        console.log(
+          `        Run: \x1b[1msource ~/${detectShell()?.config.split("/").pop()} && ${BINARY_NAME}\x1b[0m`
+        );
         console.log(`        Or restart your terminal.\n`);
       }
     }

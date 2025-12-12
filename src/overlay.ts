@@ -62,15 +62,20 @@ export const OVERLAY = `<!DOCTYPE html>
     }
 
     /* Style: Netflix-style outline (default) */
+    /* Uses text-shadow for Firefox compatibility (no -webkit-text-stroke support) */
     #text.style-none {
       -webkit-text-stroke: 1.5px #000000;
       paint-order: stroke fill;
+      /* Comprehensive text shadow for cross-browser outline effect */
       text-shadow:
+        /* Main shadow */
         3px 3px 6px rgba(0, 0, 0, 0.9),
-        1px 1px 0 #000,
-        -1px -1px 0 #000,
-        1px -1px 0 #000,
-        -1px 1px 0 #000,
+        /* 8-direction outline for browsers without text-stroke */
+        2px 0 0 #000, -2px 0 0 #000,
+        0 2px 0 #000, 0 -2px 0 #000,
+        1px 1px 0 #000, -1px -1px 0 #000,
+        1px -1px 0 #000, -1px 1px 0 #000,
+        /* Glow */
         0 0 20px rgba(0, 0, 0, 0.5);
       background: transparent;
       padding: 0;

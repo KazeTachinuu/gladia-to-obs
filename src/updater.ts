@@ -4,7 +4,7 @@
  */
 
 import { $ } from "bun";
-import { VERSION, GITHUB_OWNER, GITHUB_REPO } from "./types";
+import { GITHUB_OWNER, GITHUB_REPO, VERSION } from "./config";
 
 interface GitHubRelease {
   tag_name: string;
@@ -31,19 +31,23 @@ function compareVersions(current: string, latest: string): number {
   const l = latest.replace(/^v/, "").split(".").map(Number);
 
   for (let i = 0; i < 3; i++) {
-    if ((l[i] || 0) > (c[i] || 0)) return 1;  // latest is newer
+    if ((l[i] || 0) > (c[i] || 0)) return 1; // latest is newer
     if ((l[i] || 0) < (c[i] || 0)) return -1; // current is newer
   }
   return 0; // equal
 }
 
-export async function checkForUpdates(): Promise<{ available: boolean; version?: string; url?: string }> {
+export async function checkForUpdates(): Promise<{
+  available: boolean;
+  version?: string;
+  url?: string;
+}> {
   try {
     const response = await fetch(
       `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`,
       {
         headers: { "User-Agent": "transcription-app" },
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(5000),
       }
     );
 
@@ -58,14 +62,14 @@ export async function checkForUpdates(): Promise<{ available: boolean; version?:
 
     // Find the right asset for this platform
     const assetName = getPlatformAssetName();
-    const asset = release.assets.find(a => a.name === assetName);
+    const asset = release.assets.find((a) => a.name === assetName);
 
     if (!asset) return { available: false };
 
     return {
       available: true,
       version: latestVersion,
-      url: asset.browser_download_url
+      url: asset.browser_download_url,
     };
   } catch {
     // Silent fail - don't block app if update check fails
