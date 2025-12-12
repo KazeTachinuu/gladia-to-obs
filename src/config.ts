@@ -6,14 +6,14 @@
  */
 
 /** Application version (semver) */
-export const VERSION = "3.6.4";
+export const VERSION = "3.6.5";
 
 /** Application name */
 export const APP_NAME = "transcription";
 
 /** GitHub repository for auto-updates */
-export const GITHUB_OWNER = "hugoMusic";
-export const GITHUB_REPO = "transcription";
+export const GITHUB_OWNER = "KazeTachinuu";
+export const GITHUB_REPO = "gladia-to-obs";
 
 /** Gladia API configuration */
 export const GLADIA_API_URL = "https://api.gladia.io/v2/live";
