@@ -72,6 +72,14 @@ fetch() {
     fi
 }
 
+# Get latest version from GitHub
+get_latest_version() {
+    local release_info version
+    release_info=$(fetch "https://api.github.com/repos/$REPO/releases/latest")
+    version=$(echo "$release_info" | grep -o '"tag_name": *"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+    echo "${version:-unknown}"
+}
+
 # Verify SHA256 checksum
 verify_checksum() {
     local file="$1" platform="$2"
@@ -149,12 +157,15 @@ setup_path() {
 }
 
 main() {
+    # Fetch version first
+    local version=$(get_latest_version)
+
     # Header
     clear
     echo ""
     echo -e "${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════════════════════╗"
     echo -e "║                                                                              ║"
-    echo -e "║${NC}   ${BOLD}TRANSCRIPTION${NC}                                                              ${BOLD}${CYAN}║"
+    echo -e "║${NC}   ${BOLD}TRANSCRIPTION${NC} ${DIM}${version}${NC}                                                        ${BOLD}${CYAN}║"
     echo -e "║${NC}   ${DIM}Live captions for OBS / VMix${NC}                                               ${BOLD}${CYAN}║"
     echo -e "║                                                                              ║"
     echo -e "╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
@@ -181,10 +192,10 @@ main() {
     step "Verifying..."
     verify_checksum "$tmp_file" "$platform"
 
-    step "Installing..."
+    step "Installing ${version}..."
     mv "$tmp_file" "$INSTALL_DIR/$BINARY_NAME"
     chmod +x "$INSTALL_DIR/$BINARY_NAME"
-    info "Installed to $INSTALL_DIR/$BINARY_NAME"
+    info "Installed ${version} to $INSTALL_DIR/$BINARY_NAME"
 
     echo ""
     echo -e "${BOLD}──────────────────────────────────────────────────────────────────────────────────${NC}"

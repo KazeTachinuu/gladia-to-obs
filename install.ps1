@@ -9,25 +9,38 @@ $ErrorActionPreference = "Stop"
 $Repo = "KazeTachinuu/gladia-to-obs"
 $BinaryName = "transcription"
 
-# Clear screen and show header
-Clear-Host
-Write-Host ""
-Write-Host "+------------------------------------------------------------------------------+" -ForegroundColor Cyan
-Write-Host "|                                                                              |" -ForegroundColor Cyan
-Write-Host "|   " -ForegroundColor Cyan -NoNewline
-Write-Host "TRANSCRIPTION - Installer" -ForegroundColor Magenta -NoNewline
-Write-Host "                                                 |" -ForegroundColor Cyan
-Write-Host "|   " -ForegroundColor Cyan -NoNewline
-Write-Host "Live captions for OBS / VMix" -ForegroundColor DarkGray -NoNewline
-Write-Host "                                              |" -ForegroundColor Cyan
-Write-Host "|                                                                              |" -ForegroundColor Cyan
-Write-Host "+------------------------------------------------------------------------------+" -ForegroundColor Cyan
-Write-Host ""
+function Show-Header {
+    param($Version)
+    Clear-Host
+    Write-Host ""
+    Write-Host "+------------------------------------------------------------------------------+" -ForegroundColor Cyan
+    Write-Host "|                                                                              |" -ForegroundColor Cyan
+    Write-Host "|   " -ForegroundColor Cyan -NoNewline
+    Write-Host "TRANSCRIPTION" -ForegroundColor Magenta -NoNewline
+    Write-Host " $Version" -ForegroundColor DarkGray -NoNewline
+    Write-Host "                                                    |" -ForegroundColor Cyan
+    Write-Host "|   " -ForegroundColor Cyan -NoNewline
+    Write-Host "Live captions for OBS / VMix" -ForegroundColor DarkGray -NoNewline
+    Write-Host "                                              |" -ForegroundColor Cyan
+    Write-Host "|                                                                              |" -ForegroundColor Cyan
+    Write-Host "+------------------------------------------------------------------------------+" -ForegroundColor Cyan
+    Write-Host ""
+}
 
 function Write-Step { param($msg) Write-Host "[..]" -ForegroundColor Cyan -NoNewline; Write-Host " $msg" }
 function Write-Ok { param($msg) Write-Host "[OK]" -ForegroundColor Green -NoNewline; Write-Host " $msg" }
 function Write-Warn { param($msg) Write-Host "[!]" -ForegroundColor Yellow -NoNewline; Write-Host " $msg" }
 function Write-Fail { param($msg) Write-Host "[ERROR]" -ForegroundColor Red -NoNewline; Write-Host " $msg"; exit 1 }
+
+function Get-LatestVersion {
+    try {
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -UseBasicParsing
+        return $release.tag_name
+    }
+    catch {
+        return "unknown"
+    }
+}
 
 function Get-DownloadUrl {
     param($Platform)
@@ -95,6 +108,9 @@ function Add-ToPath {
 
 # Main installation
 function Install-Transcription {
+    $version = Get-LatestVersion
+    Show-Header -Version $version
+
     Write-Step "Detecting platform..."
     # Windows ARM64 runs x64 binaries via emulation (Bun doesn't support win-arm64 yet)
     $platform = "win-x64"
@@ -131,9 +147,9 @@ function Install-Transcription {
     $null = Test-Checksum -FilePath $tempFile -Platform $platform
 
     # Move to install location
-    Write-Step "Installing..."
+    Write-Step "Installing $version..."
     Move-Item -Path $tempFile -Destination $installPath -Force
-    Write-Ok "Installed to $installPath"
+    Write-Ok "Installed $version to $installPath"
 
     Write-Host ""
     Write-Host "------------------------------------------------------------------------------" -ForegroundColor White
