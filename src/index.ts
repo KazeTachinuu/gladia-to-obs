@@ -9,12 +9,12 @@
  */
 
 import { networkInterfaces } from "node:os";
-import { parseArgs } from "node:util";
 import { cors } from "@elysiajs/cors";
 import { Elysia, sse, t } from "elysia";
 import { VERSION } from "./config";
 import { getDashboardAsset } from "./dashboard-assets";
 import { env } from "./env";
+import { cliArgs, showHelp } from "./lib/cli";
 import { createLogger } from "./lib/logger";
 import {
   broadcast,
@@ -31,28 +31,8 @@ import { autoUpdate } from "./updater";
 // CLI ARGUMENTS
 // =============================================================================
 
-const { values: args } = parseArgs({
-  args: process.argv.slice(2),
-  options: {
-    "no-browser": { type: "boolean", default: false },
-    help: { type: "boolean", short: "h", default: false },
-  },
-  allowPositionals: false,
-  strict: false,
-});
-
-if (args.help) {
-  console.log(`
-Transcription v${VERSION}
-Live captions for OBS / VMix
-
-Usage: transcription [options]
-
-Options:
-  --no-browser    Don't open browser automatically
-  -h, --help      Show this help message
-`);
-  process.exit(0);
+if (cliArgs.help) {
+  showHelp();
 }
 
 // =============================================================================
@@ -273,7 +253,7 @@ async function main() {
     // Check if already running
     if (await checkIfRunning()) {
       showAlreadyRunningMessage();
-      if (!args["no-browser"]) {
+      if (!cliArgs["no-browser"]) {
         openBrowser();
       }
       process.exit(0);
@@ -284,7 +264,7 @@ async function main() {
     log.info({ port: env.PORT, env: env.NODE_ENV }, "Server started");
 
     // Open browser automatically (unless --no-browser flag)
-    const shouldOpenBrowser = !args["no-browser"];
+    const shouldOpenBrowser = !cliArgs["no-browser"];
     if (shouldOpenBrowser) {
       openBrowser();
     }

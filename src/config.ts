@@ -6,7 +6,7 @@
  */
 
 /** Application version (semver) */
-export const VERSION = "3.6.0";
+export const VERSION = "3.6.4";
 
 /** Application name */
 export const APP_NAME = "transcription";

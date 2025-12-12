@@ -5,6 +5,7 @@
 
 import { $ } from "bun";
 import { GITHUB_OWNER, GITHUB_REPO, VERSION } from "./config";
+import { getUserArgs } from "./lib/cli";
 
 interface GitHubRelease {
   tag_name: string;
@@ -141,9 +142,8 @@ export async function autoUpdate(): Promise<void> {
   const success = await downloadAndReplace(update.url, update.version);
 
   if (success) {
-    // Restart the application
-    const args = process.argv.slice(1);
-    Bun.spawn([process.execPath, ...args], {
+    // Restart with the same CLI arguments
+    Bun.spawn([process.execPath, ...getUserArgs()], {
       stdio: ["inherit", "inherit", "inherit"],
     });
     process.exit(0);
