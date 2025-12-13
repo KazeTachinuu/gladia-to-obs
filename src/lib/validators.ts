@@ -1,28 +1,8 @@
-/**
- * Schema Validators (Zod)
- *
- * Runtime validation for API payloads using Zod.
- * Used with Elysia's built-in validation.
- */
-
 import { z } from "zod";
 
-// =============================================================================
-// BROADCAST SCHEMA
-// =============================================================================
-
 export const broadcastSchema = z.object({
-  text: z
-    .string({ message: "Field 'text' is required" })
-    .min(1, "Field 'text' cannot be empty")
-    .max(10_000, "Field 'text' exceeds maximum length of 10000 characters"),
+  text: z.string().min(1).max(10_000),
 });
-
-export type BroadcastPayload = z.infer<typeof broadcastSchema>;
-
-// =============================================================================
-// STYLE SCHEMA
-// =============================================================================
 
 export const styleSchema = z.object({
   fontSize: z.coerce.number().min(8).max(200).optional(),

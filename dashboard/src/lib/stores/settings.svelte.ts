@@ -1,9 +1,3 @@
-/**
- * Settings Store
- *
- * Manages all user settings with localStorage persistence.
- */
-
 const STORAGE_KEY = 'transcription_config';
 
 export type Settings = {
@@ -19,7 +13,7 @@ export type Settings = {
 	bgStyle: 'none' | 'box';
 };
 
-const defaultSettings: Settings = {
+const defaults: Settings = {
 	apiKey: '',
 	language: 'fr',
 	translateTo: '',
@@ -32,44 +26,36 @@ const defaultSettings: Settings = {
 	bgStyle: 'none'
 };
 
-// Load from localStorage
-function loadFromStorage(): Settings {
-	if (typeof window === 'undefined') return defaultSettings;
-
+const load = (): Settings => {
+	if (typeof window === 'undefined') return defaults;
 	try {
 		const stored = localStorage.getItem(STORAGE_KEY);
-		if (!stored) return defaultSettings;
-		return { ...defaultSettings, ...JSON.parse(stored) };
+		return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
 	} catch {
-		return defaultSettings;
+		return defaults;
 	}
-}
+};
 
-// Save to localStorage
-function saveToStorage(settings: Settings) {
-	if (typeof window === 'undefined') return;
-
-	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-	} catch (error) {
-		console.error('Failed to save settings:', error);
+const save = (s: Settings) => {
+	if (typeof window !== 'undefined') {
+		try {
+			localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+		} catch {}
 	}
-}
+};
 
-let settings = $state<Settings>(loadFromStorage());
+let settings = $state<Settings>(load());
 
 export const settingsStore = {
 	get settings() {
 		return settings;
 	},
-
 	update(partial: Partial<Settings>) {
 		settings = { ...settings, ...partial };
-		saveToStorage(settings);
+		save(settings);
 	},
-
 	reset() {
-		settings = { ...defaultSettings };
-		saveToStorage(settings);
+		settings = { ...defaults };
+		save(settings);
 	}
 };

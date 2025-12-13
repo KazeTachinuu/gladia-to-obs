@@ -1,151 +1,26 @@
-/**
- * Auto-updater for standalone binary
- * Checks GitHub releases, downloads newer version, replaces self, restarts
- */
-
-import { $ } from "bun";
 import { GITHUB_OWNER, GITHUB_REPO, VERSION } from "./config";
-import { getUserArgs } from "./lib/cli";
 
-interface GitHubRelease {
-  tag_name: string;
-  assets: { name: string; browser_download_url: string }[];
-}
-
-function getPlatformAssetName(): string {
-  const platform = process.platform;
-  const arch = process.arch;
-
-  if (platform === "darwin" && arch === "arm64") return "transcription-mac-arm64";
-  if (platform === "darwin" && arch === "x64") return "transcription-mac-x64";
-  if (platform === "linux" && arch === "x64") return "transcription-linux-x64";
-  if (platform === "linux" && arch === "arm64") return "transcription-linux-arm64";
-  // Windows ARM64 uses x64 binary via emulation (Bun doesn't support win-arm64)
-  if (platform === "win32") return "transcription-win-x64.exe";
-
-  return "";
-}
-
-function compareVersions(current: string, latest: string): number {
-  // Remove 'v' prefix if present
-  const c = current.replace(/^v/, "").split(".").map(Number);
-  const l = latest.replace(/^v/, "").split(".").map(Number);
-
-  for (let i = 0; i < 3; i++) {
-    if ((l[i] || 0) > (c[i] || 0)) return 1; // latest is newer
-    if ((l[i] || 0) < (c[i] || 0)) return -1; // current is newer
-  }
-  return 0; // equal
-}
-
-export async function checkForUpdates(): Promise<{
-  available: boolean;
-  version?: string;
-  url?: string;
-}> {
-  try {
-    const response = await fetch(
-      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`,
-      {
-        headers: { "User-Agent": "transcription-app" },
-        signal: AbortSignal.timeout(5000),
-      }
-    );
-
-    if (!response.ok) return { available: false };
-
-    const release: GitHubRelease = await response.json();
-    const latestVersion = release.tag_name;
-
-    if (compareVersions(VERSION, latestVersion) <= 0) {
-      return { available: false };
-    }
-
-    // Find the right asset for this platform
-    const assetName = getPlatformAssetName();
-    const asset = release.assets.find((a) => a.name === assetName);
-
-    if (!asset) return { available: false };
-
-    return {
-      available: true,
-      version: latestVersion,
-      url: asset.browser_download_url,
-    };
-  } catch {
-    // Silent fail - don't block app if update check fails
-    return { available: false };
-  }
-}
-
-export async function downloadAndReplace(url: string, version: string): Promise<boolean> {
-  const execPath = process.execPath;
-  const tempPath = `${execPath}.new`;
-  const backupPath = `${execPath}.backup`;
+export async function checkForUpdate(): Promise<void> {
+  if (process.execPath.includes("bun")) return; // Skip in dev
 
   try {
-    console.log(`\x1b[36m[UPDATE]\x1b[0m Downloading ${version}...`);
-
-    // Download new binary
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Download failed");
-
-    const data = await response.arrayBuffer();
-    await Bun.write(tempPath, data);
-
-    if (process.platform === "win32") {
-      // Windows: use PowerShell for file operations
-      await $`powershell -NoProfile -Command "Move-Item -Force '${execPath}' '${backupPath}'"`.quiet();
-      await $`powershell -NoProfile -Command "Move-Item -Force '${tempPath}' '${execPath}'"`.quiet();
-      await $`powershell -NoProfile -Command "Remove-Item -Force '${backupPath}' -ErrorAction SilentlyContinue"`.quiet();
-    } else {
-      // Unix: chmod and mv
-      await $`chmod +x ${tempPath}`.quiet();
-      await $`mv ${execPath} ${backupPath}`.quiet();
-      await $`mv ${tempPath} ${execPath}`.quiet();
-      await $`rm -f ${backupPath}`.quiet();
-    }
-
-    console.log(`\x1b[32m[UPDATE]\x1b[0m Updated to ${version}! Restarting...`);
-
-    return true;
-  } catch (error) {
-    // Rollback on failure
-    try {
-      if (process.platform === "win32") {
-        await $`powershell -NoProfile -Command "Remove-Item -Force '${tempPath}' -ErrorAction SilentlyContinue; if (Test-Path '${backupPath}') { Move-Item -Force '${backupPath}' '${execPath}' }"`.quiet();
-      } else {
-        await $`rm -f ${tempPath}`.quiet();
-        await $`mv ${backupPath} ${execPath}`.quiet();
-      }
-    } catch {}
-
-    console.error(`\x1b[31m[UPDATE]\x1b[0m Update failed:`, error);
-    return false;
-  }
-}
-
-export async function autoUpdate(): Promise<void> {
-  // Skip in dev mode (when running via bun, not compiled binary)
-  if (process.execPath.includes("bun")) {
-    return;
-  }
-
-  const update = await checkForUpdates();
-
-  if (!update.available || !update.url || !update.version) {
-    return;
-  }
-
-  console.log(`\x1b[33m[UPDATE]\x1b[0m New version available: ${update.version}`);
-
-  const success = await downloadAndReplace(update.url, update.version);
-
-  if (success) {
-    // Restart with the same CLI arguments
-    Bun.spawn([process.execPath, ...getUserArgs()], {
-      stdio: ["inherit", "inherit", "inherit"],
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`, {
+      headers: { "User-Agent": "transcription" },
+      signal: AbortSignal.timeout(3000),
     });
-    process.exit(0);
-  }
+    if (!res.ok) return;
+
+    const { tag_name } = await res.json();
+    const latest = tag_name.replace(/^v/, "").split(".").map(Number);
+    const current = VERSION.split(".").map(Number);
+
+    for (let i = 0; i < 3; i++) {
+      if ((latest[i] || 0) > (current[i] || 0)) {
+        console.log(`\n  \x1b[33mUpdate available: ${tag_name}\x1b[0m`);
+        console.log(`  \x1b[2mRun: curl -fsSL https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/master/install.sh | bash\x1b[0m\n`);
+        return;
+      }
+      if ((latest[i] || 0) < (current[i] || 0)) return;
+    }
+  } catch {}
 }
