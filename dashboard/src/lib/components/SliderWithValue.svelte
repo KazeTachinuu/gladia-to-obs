@@ -10,6 +10,7 @@
 		label,
 		hint,
 		unit = '',
+		logarithmic = false,
 		onchange,
 	}: {
 		value?: number;
@@ -19,24 +20,50 @@
 		label: string;
 		hint?: (value: number) => string;
 		unit?: string;
+		logarithmic?: boolean;
 		onchange?: () => void;
 	} = $props();
+
+	// Logarithmic scale conversion functions
+	function valueToSlider(val: number): number {
+		if (!logarithmic) return val;
+		const logMin = Math.log(min);
+		const logMax = Math.log(max);
+		return (Math.log(val) - logMin) / (logMax - logMin) * 100;
+	}
+
+	function sliderToValue(slider: number): number {
+		if (!logarithmic) return slider;
+		const logMin = Math.log(min);
+		const logMax = Math.log(max);
+		const logValue = logMin + (slider / 100) * (logMax - logMin);
+		const rawValue = Math.exp(logValue);
+		// Round to step precision
+		return Math.round(rawValue / step) * step;
+	}
 
 	let sliderValue = $state([value]);
 
 	$effect(() => {
-		sliderValue = [value];
+		sliderValue = [logarithmic ? valueToSlider(value) : value];
 	});
 
 	$effect(() => {
-		if (sliderValue[0] !== value) {
-			value = sliderValue[0];
+		const newValue = logarithmic ? sliderToValue(sliderValue[0]) : sliderValue[0];
+		if (Math.abs(newValue - value) > step / 2) {
+			value = newValue;
 			onchange?.();
 		}
 	});
 
-	const displayValue = $derived(value + unit);
+	// Round to avoid floating point display issues like 0.8200000000000001
+	const displayValue = $derived(Number(value.toFixed(2)) + unit);
 	const hintText = $derived(hint ? hint(value) : null);
+
+	// For logarithmic sliders, we use 0-100 range internally
+	const sliderMin = $derived(logarithmic ? 0 : min);
+	const sliderMax = $derived(logarithmic ? 100 : max);
+	const sliderStep = $derived(logarithmic ? 0.1 : step);
 </script>
 
 <div class="space-y-3">
@@ -49,5 +76,5 @@
 			{/if}
 		</div>
 	</div>
-	<Slider type="multiple" bind:value={sliderValue} {min} {max} {step} />
+	<Slider type="multiple" bind:value={sliderValue} min={sliderMin} max={sliderMax} step={sliderStep} />
 </div>

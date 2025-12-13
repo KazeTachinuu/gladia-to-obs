@@ -113,7 +113,7 @@ async function main() {
 
   console.clear();
   console.log(
-    `\n  ${pc.bold("Transcription")} ${pc.dim(`v${VERSION}`)}\n\n  ${pc.green("●")} http://localhost:${PORT}\n  ${pc.dim(browserOpened ? "Browser opened" : "Open in browser to start")}\n\n  ${pc.dim("OBS overlay:")} http://localhost:${PORT}/overlay\n`
+    `\n  ${pc.bold("Transcription")} ${pc.dim(`v${VERSION}`)}\n\n  ${pc.green("●")} http://localhost:${PORT}\n  ${pc.dim(browserOpened ? "Browser opened" : "Open in browser to start")}\n\n  ${pc.dim("OBS overlay:")} http://localhost:${PORT}/overlay\n\n  ${pc.dim("Press")} ${pc.bold("CTRL+C")} ${pc.dim("to stop the server")}\n`
   );
 
   checkForUpdate();

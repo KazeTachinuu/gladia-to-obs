@@ -17,7 +17,7 @@ const defaults: Settings = {
 	apiKey: '',
 	language: 'auto',
 	translateTo: '',
-	silenceThreshold: 0.05,
+	silenceThreshold: 0.3,
 	maxDuration: 5,
 	vocabulary: '',
 	fontSize: 52,
