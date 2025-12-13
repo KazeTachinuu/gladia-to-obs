@@ -53,7 +53,7 @@ export const OVERLAY = `<!DOCTYPE html>
       color: #ffffff;
       font-size: 52px;
       font-weight: 700;
-      line-height: 1.35;
+      line-height: 1.75;
       letter-spacing: 0.02em;
       opacity: 0;
       transition: opacity 0.15s ease-out, font-size 0.2s ease-out;
