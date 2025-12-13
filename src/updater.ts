@@ -1,3 +1,4 @@
+import semver from "semver";
 import { GITHUB_OWNER, GITHUB_REPO, VERSION } from "./config";
 
 export async function checkForUpdate(): Promise<void> {
@@ -14,18 +15,11 @@ export async function checkForUpdate(): Promise<void> {
     if (!res.ok) return;
 
     const { tag_name } = await res.json();
-    const latest = tag_name.replace(/^v/, "").split(".").map(Number);
-    const current = VERSION.split(".").map(Number);
-
-    for (let i = 0; i < 3; i++) {
-      if ((latest[i] || 0) > (current[i] || 0)) {
-        console.log(`\n  \x1b[33mUpdate available: ${tag_name}\x1b[0m`);
-        console.log(
-          `  \x1b[2mRun: curl -fsSL https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/master/install.sh | bash\x1b[0m\n`
-        );
-        return;
-      }
-      if ((latest[i] || 0) < (current[i] || 0)) return;
+    if (semver.gt(tag_name, VERSION)) {
+      console.log(`\n  \x1b[33mUpdate available: ${tag_name}\x1b[0m`);
+      console.log(
+        `  \x1b[2mRun: curl -fsSL https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/master/install.sh | bash\x1b[0m\n`
+      );
     }
   } catch {}
 }
