@@ -1,4 +1,4 @@
-export const VERSION = "3.7.1";
+export const VERSION = "3.7.2";
 export const GITHUB_OWNER = "KazeTachinuu";
 export const GITHUB_REPO = "gladia-to-obs";
 // biome-ignore lint/complexity/useLiteralKeys: process.env requires bracket notation for TS

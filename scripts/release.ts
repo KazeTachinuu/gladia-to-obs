@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
 import { $ } from "bun";
+import pc from "picocolors";
 
 const type = process.argv[2] as "patch" | "minor" | "major" | undefined;
 if (!type || !["patch", "minor", "major"].includes(type)) {
-  console.log("Usage: bun run release <patch|minor|major>");
+  console.log(`Usage: bun run release ${pc.dim("<patch|minor|major>")}`);
   process.exit(1);
 }
 
@@ -34,4 +35,4 @@ await $`git commit -m "release: v${newVersion}"`;
 await $`git tag v${newVersion}`;
 await $`git push && git push --tags`;
 
-console.log(`\n✓ Released v${newVersion}`);
+console.log(`\n${pc.green("✓")} Released ${pc.bold(`v${newVersion}`)}`);

@@ -6,6 +6,7 @@ import { getDashboardAsset } from "./dashboard-assets";
 import { cliArgs, showHelp } from "./lib/cli";
 import { createLogger } from "./lib/logger";
 import { broadcast, broadcastStyle, getClientCount, sseManager } from "./lib/sse";
+import { pc } from "./lib/terminal";
 import { broadcastSchema, styleSchema } from "./lib/validators";
 import { OVERLAY } from "./overlay";
 import { checkForUpdate } from "./updater";
@@ -98,7 +99,7 @@ async function main() {
     });
     if (res.ok) {
       console.log(
-        `\n  \x1b[1mTranscription\x1b[0m \x1b[2mv${VERSION}\x1b[0m\n\n  \x1b[33m●\x1b[0m Already running at http://localhost:${PORT}\n`
+        `\n  ${pc.bold("Transcription")} ${pc.dim(`v${VERSION}`)}\n\n  ${pc.yellow("●")} Already running at http://localhost:${PORT}\n`
       );
       if (!cliArgs["no-browser"]) openBrowser();
       process.exit(0);
@@ -112,7 +113,7 @@ async function main() {
 
   console.clear();
   console.log(
-    `\n  \x1b[1mTranscription\x1b[0m \x1b[2mv${VERSION}\x1b[0m\n\n  \x1b[32m●\x1b[0m http://localhost:${PORT}\n  ${browserOpened ? "\x1b[2mBrowser opened\x1b[0m" : "\x1b[2mOpen in browser to start\x1b[0m"}\n\n  \x1b[2mOBS overlay:\x1b[0m http://localhost:${PORT}/overlay\n`
+    `\n  ${pc.bold("Transcription")} ${pc.dim(`v${VERSION}`)}\n\n  ${pc.green("●")} http://localhost:${PORT}\n  ${pc.dim(browserOpened ? "Browser opened" : "Open in browser to start")}\n\n  ${pc.dim("OBS overlay:")} http://localhost:${PORT}/overlay\n`
   );
 
   checkForUpdate();

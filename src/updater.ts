@@ -1,5 +1,6 @@
 import semver from "semver";
 import { GITHUB_OWNER, GITHUB_REPO, VERSION } from "./config";
+import { pc } from "./lib/terminal";
 
 export async function checkForUpdate(): Promise<void> {
   if (process.execPath.includes("bun")) return; // Skip in dev
@@ -16,10 +17,9 @@ export async function checkForUpdate(): Promise<void> {
 
     const { tag_name } = await res.json();
     if (semver.gt(tag_name, VERSION)) {
-      console.log(`\n  \x1b[33mUpdate available: ${tag_name}\x1b[0m`);
-      console.log(
-        `  \x1b[2mRun: curl -fsSL https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/master/install.sh | bash\x1b[0m\n`
-      );
+      const installCmd = `curl -fsSL https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/master/install.sh | bash`;
+      console.log(`\n  ${pc.yellow(`Update available: ${tag_name}`)}`);
+      console.log(`  ${pc.dim(`Run: ${installCmd}`)}\n`);
     }
   } catch {}
 }

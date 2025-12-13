@@ -16,6 +16,7 @@
 
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { join, relative } from "node:path";
+import pc from "picocolors";
 
 // =============================================================================
 // Configuration
@@ -69,11 +70,11 @@ async function exec(cmd: string[], options?: { cwd?: string; quiet?: boolean }):
 }
 
 function log(msg: string) {
-  console.log(`\x1b[36m→\x1b[0m ${msg}`);
+  console.log(`${pc.cyan("→")} ${msg}`);
 }
 
 function success(msg: string) {
-  console.log(`\x1b[32m✓\x1b[0m ${msg}`);
+  console.log(`${pc.green("✓")} ${msg}`);
 }
 
 // =============================================================================
@@ -208,12 +209,12 @@ async function createMacUniversal() {
 }
 
 async function showResults() {
-  console.log("\n\x1b[32m✓ Build complete!\x1b[0m\n");
+  console.log(`\n${pc.green("✓ Build complete!")}\n`);
   const files = await readdir("dist");
   for (const f of files.sort()) {
     const stat = await Bun.file(`dist/${f}`).size;
     const size = (stat / 1024 / 1024).toFixed(1);
-    console.log(`  dist/${f} \x1b[2m(${size} MB)\x1b[0m`);
+    console.log(`  dist/${f} ${pc.dim(`(${size} MB)`)}`);
   }
   console.log();
 }
@@ -234,7 +235,7 @@ async function main() {
 
   const targets: Target[] = !arg || arg === "all" ? (Object.keys(TARGETS) as Target[]) : [arg];
 
-  console.log("\n\x1b[1mTranscription Build\x1b[0m\n");
+  console.log(`\n${pc.bold("Transcription Build")}\n`);
 
   // Build pipeline
   await clean();
@@ -263,6 +264,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error("\x1b[31mBuild failed:\x1b[0m", e.message);
+  console.error(`${pc.red("Build failed:")} ${e.message}`);
   process.exit(1);
 });
