@@ -49,5 +49,5 @@
 			{/if}
 		</div>
 	</div>
-	<Slider bind:value={sliderValue} {min} {max} {step} />
+	<Slider type="multiple" bind:value={sliderValue} {min} {max} {step} />
 </div>

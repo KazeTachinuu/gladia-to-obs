@@ -29,25 +29,46 @@ const app = new Elysia()
 
   .get("/", ({ set }) => {
     const asset = getDashboardAsset("/");
-    if (!asset) return (set.status = 404), "Not found";
+    if (!asset) {
+      set.status = 404;
+      return "Not found";
+    }
     return new Response(asset.content, { headers: { "Content-Type": asset.mime } });
   })
 
   .get("/_app/*", ({ params, set }) => {
     const asset = getDashboardAsset(`/_app/${params["*"]}`);
-    if (!asset) return (set.status = 404), "Not found";
+    if (!asset) {
+      set.status = 404;
+      return "Not found";
+    }
     return new Response(asset.content, {
-      headers: { "Content-Type": asset.mime, "Cache-Control": "public, max-age=31536000, immutable" },
+      headers: {
+        "Content-Type": asset.mime,
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
     });
   })
 
-  .get("/overlay", () => new Response(OVERLAY, { headers: { "Content-Type": "text/html; charset=utf-8" } }))
-  .get("/favicon.ico", ({ set }) => ((set.status = 204), null))
-  .get("/health", () => ({ status: "ok", version: VERSION, clients: getClientCount(), uptime: process.uptime() }))
+  .get(
+    "/overlay",
+    () => new Response(OVERLAY, { headers: { "Content-Type": "text/html; charset=utf-8" } })
+  )
+  .get("/favicon.ico", ({ set }) => {
+    set.status = 204;
+    return null;
+  })
+  .get("/health", () => ({
+    status: "ok",
+    version: VERSION,
+    clients: getClientCount(),
+    uptime: process.uptime(),
+  }))
 
   .get("/network-ip", () => {
     for (const nets of Object.values(networkInterfaces()))
-      for (const net of nets ?? []) if (!net.internal && net.family === "IPv4") return { ip: net.address };
+      for (const net of nets ?? [])
+        if (!net.internal && net.family === "IPv4") return { ip: net.address };
     return { ip: null };
   })
 
@@ -72,9 +93,13 @@ const app = new Elysia()
 async function main() {
   // Check if already running
   try {
-    const res = await fetch(`http://localhost:${PORT}/health`, { signal: AbortSignal.timeout(500) });
+    const res = await fetch(`http://localhost:${PORT}/health`, {
+      signal: AbortSignal.timeout(500),
+    });
     if (res.ok) {
-      console.log(`\n  \x1b[1mTranscription\x1b[0m \x1b[2mv${VERSION}\x1b[0m\n\n  \x1b[33m●\x1b[0m Already running at http://localhost:${PORT}\n`);
+      console.log(
+        `\n  \x1b[1mTranscription\x1b[0m \x1b[2mv${VERSION}\x1b[0m\n\n  \x1b[33m●\x1b[0m Already running at http://localhost:${PORT}\n`
+      );
       if (!cliArgs["no-browser"]) openBrowser();
       process.exit(0);
     }
@@ -86,7 +111,9 @@ async function main() {
   if (browserOpened) openBrowser();
 
   console.clear();
-  console.log(`\n  \x1b[1mTranscription\x1b[0m \x1b[2mv${VERSION}\x1b[0m\n\n  \x1b[32m●\x1b[0m http://localhost:${PORT}\n  ${browserOpened ? "\x1b[2mBrowser opened\x1b[0m" : "\x1b[2mOpen in browser to start\x1b[0m"}\n\n  \x1b[2mOBS overlay:\x1b[0m http://localhost:${PORT}/overlay\n`);
+  console.log(
+    `\n  \x1b[1mTranscription\x1b[0m \x1b[2mv${VERSION}\x1b[0m\n\n  \x1b[32m●\x1b[0m http://localhost:${PORT}\n  ${browserOpened ? "\x1b[2mBrowser opened\x1b[0m" : "\x1b[2mOpen in browser to start\x1b[0m"}\n\n  \x1b[2mOBS overlay:\x1b[0m http://localhost:${PORT}/overlay\n`
+  );
 
   checkForUpdate();
   setInterval(() => sseManager.ping(), 30_000);
@@ -104,9 +131,12 @@ function openBrowser() {
   try {
     if (process.platform === "win32") Bun.spawn(["cmd", "/c", "start", "", url]);
     else if (process.platform === "darwin") Bun.spawn(["open", url]);
-    else for (const cmd of ["xdg-open", "sensible-browser"]) {
-      try { if (Bun.spawn([cmd, url], { stderr: "pipe" }).pid) break; } catch {}
-    }
+    else
+      for (const cmd of ["xdg-open", "sensible-browser"]) {
+        try {
+          if (Bun.spawn([cmd, url], { stderr: "pipe" }).pid) break;
+        } catch {}
+      }
   } catch {}
 }
 

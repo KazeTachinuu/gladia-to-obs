@@ -1,13 +1,25 @@
 <script lang="ts">
+	import { RotateCcw } from 'lucide-svelte';
+	import { Button } from '$lib/components/ui/button';
+
+	const DEFAULT_X = 50;
+	const DEFAULT_Y = 85;
+
 	let {
-		posX = $bindable(50),
-		posY = $bindable(50),
+		posX = $bindable(DEFAULT_X),
+		posY = $bindable(DEFAULT_Y),
 		onchange,
 	}: {
 		posX?: number;
 		posY?: number;
 		onchange?: () => void;
 	} = $props();
+
+	function resetPosition() {
+		posX = DEFAULT_X;
+		posY = DEFAULT_Y;
+		onchange?.();
+	}
 
 	let container: HTMLDivElement | null = $state(null);
 	let isDragging = $state(false);
@@ -71,7 +83,13 @@
 			</div>
 		</div>
 	</div>
-	<div class="text-muted-foreground mt-2 text-xs">
-		Position: {posX.toFixed(1)}%, {posY.toFixed(1)}%
+	<div class="mt-2 flex items-center justify-between">
+		<span class="text-muted-foreground text-xs">
+			Position: {posX.toFixed(1)}%, {posY.toFixed(1)}%
+		</span>
+		<Button variant="ghost" size="sm" class="h-7 px-2 text-xs" onclick={resetPosition}>
+			<RotateCcw class="mr-1 size-3" />
+			Reset
+		</Button>
 	</div>
 </div>

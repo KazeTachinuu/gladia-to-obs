@@ -15,7 +15,7 @@ export type Settings = {
 
 const defaults: Settings = {
 	apiKey: '',
-	language: 'fr',
+	language: 'auto',
 	translateTo: '',
 	silenceThreshold: 0.05,
 	maxDuration: 5,

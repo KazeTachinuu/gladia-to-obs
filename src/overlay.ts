@@ -54,6 +54,13 @@ export const OVERLAY = `<!DOCTYPE html>
 
     const caption = document.getElementById('caption');
     const text = document.getElementById('text');
+    let hideTimer = null;
+    const HIDE_DELAY = 15000;
+
+    const resetHideTimer = () => {
+      if (hideTimer) clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => text.classList.remove('visible'), HIDE_DELAY);
+    };
 
     const applyStyle = (s) => {
       if (s.fontSize) text.style.fontSize = s.fontSize + 'px';
@@ -67,7 +74,7 @@ export const OVERLAY = `<!DOCTYPE html>
 
     const connect = () => {
       const es = new EventSource('/stream');
-      es.addEventListener('text', ({ data }) => { const m = JSON.parse(data); if (m.text) { text.textContent = m.text; text.classList.add('visible'); } });
+      es.addEventListener('text', ({ data }) => { const m = JSON.parse(data); if (m.text) { text.textContent = m.text; text.classList.add('visible'); resetHideTimer(); } });
       es.addEventListener('style', ({ data }) => applyStyle(JSON.parse(data)));
       es.onerror = () => { es.close(); setTimeout(connect, 2000); };
     };

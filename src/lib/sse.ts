@@ -32,10 +32,16 @@ class SSEManager extends EventEmitter {
     try {
       while (true) {
         if (queue.length === 0) {
-          await new Promise<void>((r) => (resolve = r));
+          await new Promise<void>((r) => {
+            resolve = r;
+          });
           resolve = null;
         }
-        while (queue.length > 0) yield queue.shift()!;
+        let msg = queue.shift();
+        while (msg) {
+          yield msg;
+          msg = queue.shift();
+        }
       }
     } finally {
       this.clientCount--;
