@@ -152,26 +152,21 @@ async function bundle(): Promise<string> {
 }
 
 async function compile(bundlePath: string, target: Target) {
-  const isWindows = target.startsWith("win");
-  const ext = isWindows ? ".exe" : "";
+  const ext = target.startsWith("win") ? ".exe" : "";
   const outfile = `dist/transcription-${target}${ext}`;
 
-  const args = [
-    "bun",
-    "build",
-    "--compile",
-    "--minify",
-    `--target=${TARGETS[target]}`,
-    bundlePath,
-    `--outfile=${outfile}`,
-  ];
-
-  // Bytecode compilation causes issues on Windows
-  if (!isWindows) {
-    args.splice(4, 0, "--bytecode");
-  }
-
-  await exec(args, { quiet: true });
+  await exec(
+    [
+      "bun",
+      "build",
+      "--compile",
+      "--minify",
+      `--target=${TARGETS[target]}`,
+      bundlePath,
+      `--outfile=${outfile}`,
+    ],
+    { quiet: true }
+  );
 
   success(`Built ${outfile}`);
 }
