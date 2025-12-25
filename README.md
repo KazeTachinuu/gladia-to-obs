@@ -1,8 +1,8 @@
-# Transcription
+# Gladia Live Transcription for OBS
 
-Live captions overlay for OBS and VMix using the Gladia API.
+Live captions overlay for OBS using the Gladia API.
 
-![Version](https://img.shields.io/badge/version-3.0.0-blue)
+![Version](https://img.shields.io/badge/version-3.7.3-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 
@@ -90,18 +90,30 @@ Captions will appear at the bottom of your screen with a transparent background.
 In the Terminal, press **CTRL + C**.
 
 
-## Advanced Settings
+## Settings
+
+### Transcription
 
 | Setting | Description |
 |---------|-------------|
-| **Language** | Primary transcription language |
-| **Silence Detection** | Delay before cutting a segment after silence (0.01-2s) |
-| **Max Duration** | Maximum segment length before automatic cut (5-60s) |
+| **Language** | Spoken language (or auto-detect) |
+| **Translate to** | Optionally translate captions to another language |
+| **Custom Vocabulary** | Names, brands, or technical terms to improve recognition |
 
+### Display
 
-## Supported Languages
+| Setting | Description |
+|---------|-------------|
+| **Position** | Where captions appear on screen (X/Y) |
+| **Size** | Font size (24–80px) |
+| **Style** | Outline (Netflix-style) or background box |
 
-English, French, Spanish, German, Italian, Portuguese, Japanese, Chinese, Korean, Arabic
+### Advanced
+
+| Setting | Description |
+|---------|-------------|
+| **Response speed** | How fast captions appear after speech (lower = faster) |
+| **Max segment** | Maximum caption length before line break (5–20s) |
 
 
 ## Development
