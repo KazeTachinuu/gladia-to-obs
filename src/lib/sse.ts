@@ -7,7 +7,7 @@ interface SSEMessage {
   data: unknown;
 }
 
-class SSEManager extends EventEmitter {
+export class SSEManager extends EventEmitter {
   private clientCount = 0;
 
   constructor() {

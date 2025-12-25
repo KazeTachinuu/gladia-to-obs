@@ -91,6 +91,8 @@ const app = new Elysia()
     return { success: true };
   });
 
+export { app };
+
 async function main() {
   // Check if already running
   try {
@@ -141,7 +143,9 @@ function openBrowser() {
   } catch {}
 }
 
-main().catch((err) => {
-  log.fatal("Startup error", err);
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((err) => {
+    log.fatal("Startup error", err);
+    process.exit(1);
+  });
+}
