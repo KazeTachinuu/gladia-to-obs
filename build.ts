@@ -18,10 +18,6 @@ import { mkdir, readdir, rm } from "node:fs/promises";
 import { join, relative } from "node:path";
 import pc from "picocolors";
 
-// =============================================================================
-// Configuration
-// =============================================================================
-
 const TARGETS = {
   "mac-arm64": "bun-darwin-arm64",
   "mac-x64": "bun-darwin-x64",
@@ -41,10 +37,6 @@ const MIME_TYPES: Record<string, string> = {
   png: "image/png",
   txt: "text/plain",
 };
-
-// =============================================================================
-// Utilities
-// =============================================================================
 
 async function* walkDir(dir: string): AsyncGenerator<string> {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -76,10 +68,6 @@ function log(msg: string) {
 function success(msg: string) {
   console.log(`${pc.green("✓")} ${msg}`);
 }
-
-// =============================================================================
-// Build Steps
-// =============================================================================
 
 async function clean() {
   log("Cleaning previous build...");
@@ -219,14 +207,9 @@ async function showResults() {
   console.log();
 }
 
-// =============================================================================
-// Main
-// =============================================================================
-
 async function main() {
   const arg = process.argv[2] as Target | "all" | undefined;
 
-  // Validate target
   if (arg && arg !== "all" && !TARGETS[arg as Target]) {
     console.error(`Unknown target: ${arg}`);
     console.error(`Valid targets: ${Object.keys(TARGETS).join(", ")}, all`);
@@ -237,7 +220,6 @@ async function main() {
 
   console.log(`\n${pc.bold("Transcription Build")}\n`);
 
-  // Build pipeline
   await clean();
   await installDeps();
   await buildDashboard();
@@ -245,19 +227,16 @@ async function main() {
 
   const bundlePath = await bundle();
 
-  // Compile for each target
   for (const target of targets) {
     log(`Compiling for ${target}...`);
     await compile(bundlePath, target);
   }
 
-  // Post-build steps
   if (targets.length > 1) {
     await generateChecksums();
     await createMacUniversal();
   }
 
-  // Cleanup
   await rm(".build", { recursive: true, force: true });
 
   await showResults();

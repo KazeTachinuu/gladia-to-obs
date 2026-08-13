@@ -2,10 +2,6 @@
 
 Live captions overlay for OBS using the Gladia API.
 
-![Version](https://img.shields.io/badge/version-3.7.3-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-
-
 ## Installation
 
 ### Option 1: Install via script (easiest)
